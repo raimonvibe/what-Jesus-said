@@ -129,6 +129,28 @@ export default function CatalogBrowser({
         {PATH_BLURBS[state.path]}
       </p>
 
+      {/* The tour is a peer of the paths, not the tail of one: it used to be
+          reachable only under 25 Start Here cards, and not at all from the
+          other three lists. */}
+      <button
+        type="button"
+        onClick={onStartTour}
+        className="tour-next-btn flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left shadow-md transition-shadow hover:shadow-lg"
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/35 dark:bg-white/10">
+          <Compass className="h-4 w-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-sans text-[13px] font-semibold">
+            Guided tour
+          </span>
+          <span className="block font-sans text-[11px] leading-snug opacity-80">
+            Fourteen sayings, walked in order, read aloud if you like.
+          </span>
+        </span>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+      </button>
+
       {/* theme / era picker */}
       {needsThemePick && (
         <div className="flex flex-wrap gap-1.5">
