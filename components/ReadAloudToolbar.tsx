@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Gauge,
   Headphones,
   Pause,
   Play,
@@ -13,10 +12,8 @@ import {
   X,
 } from 'lucide-react'
 import FixedViewportLayer from '@/components/FixedViewportLayer'
+import VoicePicker from '@/components/VoicePicker'
 import { useReadAloud } from '@/hooks/useReadAloud'
-import { formatVoiceLabel, groupVoicesByLanguage } from '@/lib/readAloud'
-
-const SPEEDS = [0.75, 1, 1.25, 1.5]
 
 export default function ReadAloudToolbar() {
   const [open, setOpen] = useState(false)
@@ -38,6 +35,7 @@ export default function ReadAloudToolbar() {
     voices,
     voiceURI,
     setVoiceURI,
+    refreshVoices,
     mode,
     start,
     stop,
@@ -57,6 +55,10 @@ export default function ReadAloudToolbar() {
       `Reading section ${currentIndex + 1} of ${chunks.length}${mode === 'selection' ? ' (selection)' : ''}`,
     )
   }, [isActive, chunks.length, currentIndex, mode])
+
+  useEffect(() => {
+    if (open) refreshVoices()
+  }, [open, refreshVoices])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -273,54 +275,14 @@ export default function ReadAloudToolbar() {
               </div>
 
               <div className="space-y-3 border-t border-pine-700 pt-3 dark:border-ocean-700">
-                <label className="block">
-                  <span className="mb-1 flex items-center gap-1 text-xs font-medium font-sans text-pine-200 dark:text-ocean-300">
-                    <Gauge className="h-3.5 w-3.5" />
-                    Speed
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {SPEEDS.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setRate(s)}
-                        className={`min-h-9 min-w-[3rem] rounded-lg px-2 text-xs font-medium font-sans transition-colors ${
-                          rate === s
-                            ? 'bg-pine-100 text-pine-900 dark:bg-ocean-200 dark:text-ocean-950'
-                            : 'bg-pine-800 text-pine-100 hover:bg-pine-700 dark:bg-ocean-800 dark:text-ocean-100 dark:hover:bg-ocean-700'
-                        }`}
-                      >
-                        {s}×
-                      </button>
-                    ))}
-                  </div>
-                </label>
-
-                <label className="block">
-                  <span className="mb-1 text-xs font-medium font-sans text-pine-200 dark:text-ocean-300">
-                    Voice
-                  </span>
-                  <select
-                    value={voiceURI}
-                    onChange={(e) => setVoiceURI(e.target.value)}
-                    className="w-full min-h-11 rounded-xl border border-pine-600 bg-pine-800 px-3 text-xs font-sans text-pine-50 focus:border-pine-300 focus:outline-none focus:ring-2 focus:ring-pine-500/30 dark:border-ocean-600 dark:bg-ocean-800 dark:text-ocean-50 dark:focus:border-ocean-400 dark:focus:ring-ocean-400/30"
-                    aria-label="Reading voice"
-                  >
-                    {voices.length === 0 ? (
-                      <option value="">Loading voices…</option>
-                    ) : (
-                      groupVoicesByLanguage(voices).map((group) => (
-                        <optgroup key={group.label} label={group.label}>
-                          {group.voices.map((v) => (
-                            <option key={v.voiceURI} value={v.voiceURI}>
-                              {formatVoiceLabel(v)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))
-                    )}
-                  </select>
-                </label>
+                <VoicePicker
+                  voices={voices}
+                  voiceURI={voiceURI}
+                  onVoiceURI={setVoiceURI}
+                  rate={rate}
+                  onRate={setRate}
+                  onRefreshVoices={refreshVoices}
+                />
 
                 <label className="block">
                   <span className="mb-1 flex justify-between text-xs font-medium font-sans text-pine-200 dark:text-ocean-300">

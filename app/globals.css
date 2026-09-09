@@ -330,17 +330,6 @@
         )
       );
     }
-
-    /* Nothing to keep in view behind the narration settings, so give them room. */
-    .tour-panel[data-voice-sheet='true'] {
-      max-height: min(
-        82dvh,
-        calc(
-          var(--vv-height, 100dvh) - 4rem - env(safe-area-inset-top, 0px) -
-            var(--vv-offset-bottom, 0px)
-        )
-      );
-    }
   }
 
   /* Landscape phones and short windows: reclaim every pixel and drop the
@@ -482,14 +471,6 @@
       opacity: 0.55;
       transform: scale(0.88);
     }
-  }
-
-  .tour-voice-sheet {
-    background: #faf8f7;
-  }
-
-  html.theme-dark .tour-voice-sheet {
-    background: #16131e;
   }
 
   .tour-progress-bar {

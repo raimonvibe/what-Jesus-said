@@ -278,5 +278,6 @@ export function useTourNarration() {
     setRate,
     mode,
     setMode,
+    refreshVoices: loadVoices,
   }
 }

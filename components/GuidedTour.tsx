@@ -11,7 +11,6 @@ import {
   ChevronRight,
   Compass,
   Heart,
-  Languages,
   Layers,
   LifeBuoy,
   Maximize2,
@@ -65,8 +64,9 @@ import {
   type PathState,
 } from '@/lib/sayings/paths'
 import type { Saying } from '@/lib/sayings/types'
+import VoicePicker from '@/components/VoicePicker'
 import { useTourNarration, type SpeechMode } from '@/hooks/useTourNarration'
-import { extractSpokenBlocks, formatVoiceLabel, groupVoicesByLanguage } from '@/lib/readAloud'
+import { extractSpokenBlocks } from '@/lib/readAloud'
 
 /** Where the tour wants the reader to be. */
 export interface TourTarget {
@@ -109,8 +109,6 @@ const SPLIT_MIN_WIDTH = 960
 /** Below this there is no useful strip of text above a bottom sheet. */
 const MIN_VISIBLE_STRIP = 140
 
-const SPEEDS = [0.75, 1, 1.25, 1.5]
-
 /** Give the reader time to open the chapter before reading the passage from it. */
 const NARRATION_DELAY = 450
 
@@ -146,7 +144,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [furthestStep, setFurthestStep] = useState(0)
   const [seen, setSeen] = useState(true)
-  const [voiceSheetOpen, setVoiceSheetOpen] = useState(false)
   /** Which face of the panel is showing: the paths, a list, or the tour. */
   const [view, setView] = useState<'overview' | 'browse' | 'tour'>('browse')
   const [pathState, setPathState] = useState<PathState>(DEFAULT_PATH_STATE)
@@ -158,6 +155,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     mode: speechMode,
     rate: speechRate,
     voiceURI,
+    refreshVoices,
     stop: stopNarration,
   } = narration
   // Held in a ref so the narration effect keys off the settings, not identity.
@@ -205,7 +203,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     rememberTourStep(clamped)
     setFurthestStep((f) => Math.max(f, clamped))
     setMinimized(false)
-    setVoiceSheetOpen(false)
   }, [])
 
   const restart = useCallback(() => {
@@ -220,7 +217,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     setOpen(true)
     setMinimized(false)
     setSeen(true)
-    setVoiceSheetOpen(false)
     try {
       localStorage.setItem(SEEN_KEY, 'true')
     } catch {
@@ -264,13 +260,17 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     return () => window.removeEventListener(OPEN_SAYINGS_EVENT, openFromHome)
   }, [start])
 
+  useEffect(() => {
+    if (!open || minimized) return
+    refreshVoices()
+  }, [open, minimized, refreshVoices])
+
   const exit = useCallback(() => {
     setOpen(false)
     setMinimized(false)
     setSelectedSaying(null)
     setStepIndex(0)
     setFurthestStep(0)
-    setVoiceSheetOpen(false)
     stopNarration()
     navigateRef.current(null)
   }, [stopNarration])
@@ -357,7 +357,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
       window.removeEventListener('orientationchange', update)
       clear()
     }
-  }, [open, minimized, stepIndex, voiceSheetOpen])
+  }, [open, minimized, stepIndex])
 
   /**
    * What the current step sounds like under the chosen mode. Shared by the
@@ -575,7 +575,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
         aria-modal="false"
         aria-label={`Guided tour: ${SAYING_INTRO.title}`}
         data-read-aloud-ignore
-        data-voice-sheet={voiceSheetOpen ? 'true' : undefined}
         className="tour-panel-shell tour-panel pointer-events-auto flex flex-col overflow-hidden rounded-2xl shadow-2xl"
       >
         {/* header */}
@@ -595,41 +594,24 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {narration.supported && (
-                <div className="tour-speech-control flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = !speechOn
-                      narration.setEnabled(next)
-                      if (!next) setVoiceSheetOpen(false)
-                    }}
-                    className={`tour-icon-btn ${speechOn ? 'tour-icon-btn-on' : ''}`}
-                    aria-pressed={speechOn}
-                    aria-label={
-                      speechOn ? 'Turn narration off' : 'Read this card aloud'
-                    }
-                  >
-                    {speechOn ? (
-                      <Volume2
-                        className={`h-4 w-4 ${narration.speaking ? 'tour-speaking' : ''}`}
-                        aria-hidden
-                      />
-                    ) : (
-                      <VolumeX className="h-4 w-4" aria-hidden />
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setVoiceSheetOpen((v) => !v)}
-                    className={`tour-icon-btn ${voiceSheetOpen ? 'tour-icon-btn-on' : ''}`}
-                    aria-expanded={voiceSheetOpen}
-                    aria-label="Voice and language"
-                    title="Voice and language"
-                  >
-                    <Languages className="h-4 w-4" aria-hidden />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => narration.setEnabled(!speechOn)}
+                  className={`tour-icon-btn ${speechOn ? 'tour-icon-btn-on' : ''}`}
+                  aria-pressed={speechOn}
+                  aria-label={
+                    speechOn ? 'Turn narration off' : 'Read this card aloud'
+                  }
+                >
+                  {speechOn ? (
+                    <Volume2
+                      className={`h-4 w-4 ${narration.speaking ? 'tour-speaking' : ''}`}
+                      aria-hidden
+                    />
+                  ) : (
+                    <VolumeX className="h-4 w-4" aria-hidden />
+                  )}
+                </button>
               )}
 
               {isTour && (
@@ -747,102 +729,32 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
           )}
         </div>
 
-        {/* body — a flex column so the scroll area keeps a definite height and
-            the voice sheet has something to absolutely fill */}
+        {narration.supported && (
+          <div className="shrink-0 space-y-3 border-b border-pine-600/70 px-4 py-3 dark:border-ocean-700/70">
+            <VoicePicker
+              voices={narration.voices}
+              voiceURI={voiceURI}
+              onVoiceURI={narration.setVoiceURI}
+              rate={speechRate}
+              onRate={narration.setRate}
+              onRefreshVoices={refreshVoices}
+              hint="Voices are grouped by language. After Google Translate, pick a voice in that language — it reads the words on the card, not the English original."
+            />
+            {(isTour || selectedSaying) && speechOn && (
+              <button
+                type="button"
+                onClick={() => speakRef.current(segmentsForStep())}
+                className="flex min-h-10 items-center gap-1.5 rounded-xl px-3 font-sans text-xs btn-surface hover:shadow-md"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Replay step
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* body — a flex column so the scroll area keeps a definite height */}
         <div className="relative flex min-h-0 flex-1 flex-col">
-          {voiceSheetOpen && (
-            <div className="tour-voice-sheet tour-panel-body absolute inset-0 z-10 overflow-y-auto px-4 py-4">
-              <div className="mb-3 flex items-center gap-2">
-                <Languages
-                  className="h-4 w-4 text-pine-200 dark:text-ocean-300"
-                  aria-hidden
-                />
-                <h2 className="font-display text-base font-bold text-pine-50 dark:text-ocean-50">
-                  Narration
-                </h2>
-              </div>
-
-              {narration.voices.length === 0 ? (
-                <p className="font-sans text-xs text-pine-300 dark:text-ocean-400">
-                  Your browser hasn&rsquo;t offered any voices yet. Try again in a
-                  moment.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  <label className="block">
-                    <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-pine-300 dark:text-ocean-400">
-                      Voice
-                    </span>
-                    <select
-                      value={voiceURI}
-                      onChange={(e) => narration.setVoiceURI(e.target.value)}
-                      className="min-h-11 w-full rounded-xl border border-pine-600 bg-pine-800 px-3 font-sans text-xs text-pine-50 focus:border-pine-300 focus:outline-none focus:ring-2 focus:ring-pine-500/30 dark:border-ocean-600 dark:bg-ocean-800 dark:text-ocean-50 dark:focus:border-ocean-400"
-                    >
-                      {groupVoicesByLanguage(narration.voices).map((group) => (
-                        <optgroup key={group.label} label={group.label}>
-                          {group.voices.map((v) => (
-                            <option key={v.voiceURI} value={v.voiceURI}>
-                              {formatVoiceLabel(v)}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                    <span className="mt-1.5 block font-sans text-[10px] leading-relaxed text-pine-300 dark:text-ocean-300">
-                      Grouped by language, from the voices on this device. After
-                      Google Translate, pick a voice in that language — it reads
-                      the words on the card, not the English original.
-                    </span>
-                  </label>
-
-                  <div>
-                    <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-pine-300 dark:text-ocean-400">
-                      Speed
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {SPEEDS.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => narration.setRate(s)}
-                          aria-pressed={speechRate === s}
-                          className={`min-h-9 min-w-[3rem] rounded-lg px-2 font-sans text-xs font-medium transition-colors ${
-                            speechRate === s
-                              ? 'bg-pine-100 text-pine-900 dark:bg-ocean-200 dark:text-ocean-950'
-                              : 'bg-pine-800 text-pine-100 hover:bg-pine-700 dark:bg-ocean-800 dark:text-ocean-100 dark:hover:bg-ocean-700'
-                          }`}
-                        >
-                          {s}&times;
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 border-t border-pine-700 pt-3 dark:border-ocean-700">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        speakRef.current(segmentsForStep())
-                      }
-                      className="flex min-h-10 items-center gap-1.5 rounded-xl px-3 font-sans text-xs btn-surface hover:shadow-md"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                      Replay step
-                    </button>
-                    <div className="flex-1" />
-                    <button
-                      type="button"
-                      onClick={() => setVoiceSheetOpen(false)}
-                      className="tour-next-btn flex min-h-10 items-center rounded-xl px-4 font-sans text-xs font-semibold shadow-md"
-                    >
-                      Done
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           <div
             ref={bodyRef}
             className="tour-panel-body min-h-0 flex-1 overflow-y-auto px-4 py-4"

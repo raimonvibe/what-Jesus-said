@@ -304,6 +304,7 @@ export function useReadAloud() {
     voices,
     voiceURI,
     setVoiceURI: setVoiceURIAndSave,
+    refreshVoices: loadVoices,
     mode,
     start,
     stop,
