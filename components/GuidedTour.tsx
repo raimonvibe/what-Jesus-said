@@ -136,7 +136,6 @@ interface GroupPill {
   label: string
   Icon: IconType
   firstStep: number
-  reached: boolean
   active: boolean
   done: boolean
 }
@@ -548,7 +547,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
       label: s.title,
       Icon: SECTION_ICONS[s.id],
       firstStep: first,
-      reached: furthestStep >= first,
       active: sectionIndex === i,
       done:
         furthestStep > first + s.sayings.length + 1 ||
@@ -801,19 +799,14 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                 <button
                   key={g.key}
                   type="button"
-                  disabled={!g.reached}
                   onClick={() => goTo(g.firstStep)}
                   className={`flex flex-1 items-center justify-center gap-1 rounded-lg px-1.5 py-1.5 font-sans text-[11px] font-medium transition-colors ${
                     g.active
                       ? 'bg-pine-100 text-pine-900 dark:bg-ocean-200 dark:text-ocean-950'
-                      : g.reached
-                        ? 'bg-pine-700/70 text-pine-100 hover:bg-pine-600/70 dark:bg-ocean-800/70 dark:text-ocean-100 dark:hover:bg-ocean-700/70'
-                        : 'bg-pine-800/50 text-pine-500 dark:bg-ocean-900/40 dark:text-ocean-600'
+                      : 'bg-pine-700/70 text-pine-100 hover:bg-pine-600/70 dark:bg-ocean-800/70 dark:text-ocean-100 dark:hover:bg-ocean-700/70'
                   }`}
                   aria-current={g.active ? 'step' : undefined}
-                  aria-label={
-                    g.reached ? `Go to ${g.label}` : `${g.label} — not reached yet`
-                  }
+                  aria-label={`Go to ${g.label}`}
                 >
                   {g.done && !g.active ? (
                     <Check className="h-3 w-3 shrink-0" aria-hidden />
