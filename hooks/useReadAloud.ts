@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  applyUtteranceVoice,
   clearChunkHighlights,
+  detectPageSpeechLang,
   getReadableChunks,
   getSelectionChunk,
   highlightChunk,
+  languagePrefix,
+  pageSpeechLangChanged,
   pickDefaultVoice,
   updateSelectionCache,
   usableVoices,
@@ -57,21 +61,44 @@ export function useReadAloud() {
     return root
   }, [])
 
+  const userChoseVoice = useRef(false)
+
   const loadVoices = useCallback(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
     const list = usableVoices(window.speechSynthesis.getVoices())
     setVoices(list)
     setVoiceURI((current) => {
-      if (current && list.some((v) => v.voiceURI === current)) return current
+      if (
+        userChoseVoice.current &&
+        current &&
+        list.some((v) => v.voiceURI === current)
+      ) {
+        return current
+      }
+      const pageLang = detectPageSpeechLang()
+      if (
+        current &&
+        list.some((v) => v.voiceURI === current) &&
+        languagePrefix(
+          list.find((v) => v.voiceURI === current)?.lang ?? '',
+        ) === languagePrefix(pageLang)
+      ) {
+        return current
+      }
       const saved =
         typeof window !== 'undefined'
           ? localStorage.getItem(VOICE_URI_KEY) ?? undefined
           : undefined
-      return pickDefaultVoice(list, saved)?.voiceURI ?? list[0]?.voiceURI ?? ''
+      return (
+        pickDefaultVoice(list, saved, pageLang)?.voiceURI ??
+        list[0]?.voiceURI ??
+        ''
+      )
     })
   }, [])
 
   const setVoiceURIAndSave = useCallback((uri: string) => {
+    userChoseVoice.current = true
     setVoiceURI(uri)
     if (typeof window !== 'undefined' && uri) {
       localStorage.setItem(VOICE_URI_KEY, uri)
@@ -100,6 +127,7 @@ export function useReadAloud() {
     getMainRoot()
     loadVoices()
     window.speechSynthesis.onvoiceschanged = loadVoices
+    const stopWatchingLang = pageSpeechLangChanged(loadVoices)
 
     const onStop = () => stop()
     window.addEventListener('read-aloud-stop', onStop)
@@ -108,6 +136,7 @@ export function useReadAloud() {
     return () => {
       window.speechSynthesis.onvoiceschanged = null
       window.speechSynthesis.cancel()
+      stopWatchingLang()
       window.removeEventListener('read-aloud-stop', onStop)
       document.removeEventListener('selectionchange', updateSelectionCache)
     }
@@ -140,7 +169,7 @@ export function useReadAloud() {
       const voice = window.speechSynthesis
         ?.getVoices()
         .find((item) => item.voiceURI === uri)
-      if (voice) utterance.voice = voice
+      applyUtteranceVoice(utterance, voice)
 
       utterance.onend = () => {
         const current = sessionRef.current

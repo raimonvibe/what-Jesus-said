@@ -1,9 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { pickDefaultVoice, usableVoices } from '@/lib/readAloud'
+import {
+  applyUtteranceVoice,
+  detectPageSpeechLang,
+  languagePrefix,
+  pageSpeechLangChanged,
+  pickDefaultVoice,
+  usableVoices,
+} from '@/lib/readAloud'
 
 const VOICE_KEY = 'tour-voice-uri'
+const SHARED_VOICE_KEY = 'read-aloud-voice-uri'
 const RATE_KEY = 'tour-speech-rate'
 const ENABLED_KEY = 'tour-speech-on'
 const MODE_KEY = 'tour-speech-mode'
@@ -34,8 +42,8 @@ function readFlag(key: string, fallback: boolean): boolean {
  * Speaks a queue of short strings with the browser's speech synthesis.
  *
  * Separate from useReadAloud, which walks the DOM of the page: here the guided
- * tour supplies the exact sentences it wants read. Every installed language is
- * offered, with novelty voices excluded — see usableVoices.
+ * tour supplies the exact sentences it wants read. Voices follow the page
+ * language after Google Translate so Dutch on screen is not spoken as English.
  */
 export function useTourNarration() {
   const [supported, setSupported] = useState(false)
@@ -55,20 +63,44 @@ export function useTourNarration() {
     settingsRef.current = { rate, voiceURI }
   }, [rate, voiceURI])
 
+  const userChoseVoice = useRef(false)
+
   const loadVoices = useCallback(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
-    // Every language the system offers, minus the joke and character voices.
     const list = usableVoices(window.speechSynthesis.getVoices())
     setVoices(list)
     setVoiceURIState((current) => {
-      if (current && list.some((v) => v.voiceURI === current)) return current
+      if (
+        userChoseVoice.current &&
+        current &&
+        list.some((v) => v.voiceURI === current)
+      ) {
+        return current
+      }
+      const pageLang = detectPageSpeechLang()
+      if (
+        current &&
+        list.some((v) => v.voiceURI === current) &&
+        languagePrefix(
+          list.find((v) => v.voiceURI === current)?.lang ?? '',
+        ) === languagePrefix(pageLang)
+      ) {
+        return current
+      }
       let saved: string | undefined
       try {
-        saved = localStorage.getItem(VOICE_KEY) ?? undefined
+        saved =
+          localStorage.getItem(SHARED_VOICE_KEY) ??
+          localStorage.getItem(VOICE_KEY) ??
+          undefined
       } catch {
         saved = undefined
       }
-      return pickDefaultVoice(list, saved)?.voiceURI ?? list[0]?.voiceURI ?? ''
+      return (
+        pickDefaultVoice(list, saved, pageLang)?.voiceURI ??
+        list[0]?.voiceURI ??
+        ''
+      )
     })
   }, [])
 
@@ -105,6 +137,7 @@ export function useTourNarration() {
 
     loadVoices()
     window.speechSynthesis.addEventListener?.('voiceschanged', loadVoices)
+    const stopWatchingLang = pageSpeechLangChanged(loadVoices)
 
     // Yield if the page-level Listen toolbar takes over.
     const onOtherReaderStarted = () => {
@@ -116,6 +149,7 @@ export function useTourNarration() {
     return () => {
       window.speechSynthesis.removeEventListener?.('voiceschanged', loadVoices)
       window.removeEventListener('read-aloud-started', onOtherReaderStarted)
+      stopWatchingLang()
       window.speechSynthesis.cancel()
     }
   }, [loadVoices, stop])
@@ -141,10 +175,7 @@ export function useTourNarration() {
       const voice = window.speechSynthesis
         .getVoices()
         .find((v) => v.voiceURI === settingsRef.current.voiceURI)
-      if (voice) {
-        utterance.voice = voice
-        utterance.lang = voice.lang
-      }
+      applyUtteranceVoice(utterance, voice)
 
       utterance.onend = () => {
         const now = sessionRef.current
@@ -204,9 +235,11 @@ export function useTourNarration() {
   )
 
   const setVoiceURI = useCallback((uri: string) => {
+    userChoseVoice.current = true
     setVoiceURIState(uri)
     try {
       localStorage.setItem(VOICE_KEY, uri)
+      localStorage.setItem(SHARED_VOICE_KEY, uri)
     } catch {
       /* ignore */
     }

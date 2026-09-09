@@ -269,20 +269,120 @@ export function usableVoices(
   return sortVoices(genuine.length > 0 ? genuine : voices)
 }
 
+/**
+ * Language the page is being read in. Google Translate leaves <html lang>
+ * as "en" and instead sets a cookie, hash, combo box, or translated-* class.
+ */
+export function detectPageSpeechLang(): string {
+  if (typeof document === 'undefined') return 'en'
+
+  const hash = window.location.hash.match(
+    /googtrans\([a-zA-Z-]+[|/]([a-zA-Z-]+)\)/,
+  )
+  if (hash?.[1]) return hash[1].toLowerCase()
+
+  const cookie = document.cookie.match(/googtrans=\/[a-zA-Z-]+\/([a-zA-Z-]+)/)
+  if (cookie?.[1]) return cookie[1].toLowerCase()
+
+  const combo = document.querySelector(
+    'select.goog-te-combo',
+  ) as HTMLSelectElement | null
+  if (combo?.value) return combo.value.toLowerCase()
+
+  const html = document.documentElement
+  if (
+    html.classList.contains('translated-ltr') ||
+    html.classList.contains('translated-rtl')
+  ) {
+    return (navigator.language || 'en').toLowerCase()
+  }
+
+  return (html.getAttribute('lang') || 'en').toLowerCase()
+}
+
+export function pageIsTranslated(): boolean {
+  if (typeof document === 'undefined') return false
+  if (/googtrans/.test(window.location.hash)) return true
+  if (/googtrans=/.test(document.cookie)) return true
+  const combo = document.querySelector(
+    'select.goog-te-combo',
+  ) as HTMLSelectElement | null
+  if (combo?.value && languagePrefix(combo.value) !== 'en') return true
+  const html = document.documentElement
+  return (
+    html.classList.contains('translated-ltr') ||
+    html.classList.contains('translated-rtl')
+  )
+}
+
+export function pageSpeechLangChanged(onChange: () => void): () => void {
+  const html = document.documentElement
+  const observer = new MutationObserver(onChange)
+  observer.observe(html, { attributes: true, attributeFilter: ['class', 'lang'] })
+  window.addEventListener('hashchange', onChange)
+  return () => {
+    observer.disconnect()
+    window.removeEventListener('hashchange', onChange)
+  }
+}
+
+export function languagePrefix(tag: string): string {
+  return tag.replace('_', '-').split('-')[0]?.toLowerCase() || 'en'
+}
+
+export function applyUtteranceVoice(
+  utterance: SpeechSynthesisUtterance,
+  voice: SpeechSynthesisVoice | undefined,
+) {
+  if (!voice) return
+  utterance.voice = voice
+  utterance.lang = voice.lang.replace('_', '-')
+}
+
+function voicesForLang(
+  voices: SpeechSynthesisVoice[],
+  lang: string,
+): SpeechSynthesisVoice[] {
+  const prefix = languagePrefix(lang)
+  return voices.filter((v) => languagePrefix(v.lang) === prefix)
+}
+
 export function pickDefaultVoice(
   voices: SpeechSynthesisVoice[],
   preferredURI?: string,
+  pageLang?: string,
 ): SpeechSynthesisVoice | undefined {
+  const target = pageLang || 'en'
   if (preferredURI) {
     const saved = voices.find((v) => v.voiceURI === preferredURI)
-    if (saved) return saved
+    if (
+      saved &&
+      (!pageIsTranslated() ||
+        languagePrefix(saved.lang) === languagePrefix(target))
+    ) {
+      return saved
+    }
   }
 
-  // The text is English, so start on an English voice even though every
-  // language is on offer — sortVoices has already put the best one first.
-  const english = voices.filter((v) => v.lang.startsWith('en'))
-  const pool = english.length > 0 ? english : voices
+  const matching = voicesForLang(voices, target)
+  const english = voicesForLang(voices, 'en')
+  const pool =
+    matching.length > 0 ? matching : english.length > 0 ? english : voices
   return pool.find((v) => !v.localService) ?? pool[0]
+}
+
+/** Visible text in a panel, so Google Translate's on-screen language is spoken. */
+export function extractSpokenBlocks(root: HTMLElement): string[] {
+  const clone = root.cloneNode(true) as HTMLElement
+  clone
+    .querySelectorAll(
+      "button, svg, select, input, [data-read-aloud-ignore], [aria-hidden='true']",
+    )
+    .forEach((node) => node.remove())
+
+  return Array.from(clone.querySelectorAll('h2, h3, p, blockquote, li'))
+    .map((el) => (el as HTMLElement).innerText.replace(/\s+/g, ' ').trim())
+    .filter((text) => text.length > 1)
 }
 
 export function formatVoiceLabel(voice: SpeechSynthesisVoice): string {
@@ -329,7 +429,10 @@ export function groupVoicesByLanguage(
       voices: sortVoices(list),
     }))
     .sort((a, b) => {
-      // The text is English, so English voices lead; the rest are alphabetical.
+      const prefer = languagePrefix(detectPageSpeechLang())
+      const aMatch = languagePrefix(a.tag) === prefer
+      const bMatch = languagePrefix(b.tag) === prefer
+      if (aMatch !== bMatch) return aMatch ? -1 : 1
       const aEnglish = a.tag.startsWith('en')
       const bEnglish = b.tag.startsWith('en')
       if (aEnglish !== bEnglish) return aEnglish ? -1 : 1

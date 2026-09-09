@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BookOpen,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Compass,
@@ -67,7 +66,7 @@ import {
 } from '@/lib/sayings/paths'
 import type { Saying } from '@/lib/sayings/types'
 import { useTourNarration, type SpeechMode } from '@/hooks/useTourNarration'
-import { formatVoiceLabel, groupVoicesByLanguage } from '@/lib/readAloud'
+import { extractSpokenBlocks, formatVoiceLabel, groupVoicesByLanguage } from '@/lib/readAloud'
 
 /** Where the tour wants the reader to be. */
 export interface TourTarget {
@@ -367,12 +366,17 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
    * the chapter first (see NARRATION_DELAY).
    */
   const segmentsForStep = useCallback(() => {
-    // A card opened from the catalog reads as itself; the tour reads its step.
-    const tour = isTour
+    // Prefer the words on screen so Google Translate's language is spoken,
+    // not the English strings in the catalog JSON.
+    const fromScreen = bodyRef.current
+      ? extractSpokenBlocks(bodyRef.current)
+      : []
+    const fallback = isTour
       ? narrationForSayingStep(sayingStep)
       : selectedSaying
         ? narrationForSaying(selectedSaying)
         : []
+    const tour = fromScreen.length > 0 ? fromScreen : fallback
     if (speechMode === 'tour') return tour
 
     const verses = Array.from(
@@ -383,8 +387,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
       )
       .filter(Boolean)
 
-    // Welcome, section and closing cards have no passage behind them. Falling
-    // back to the tour text keeps those steps from being silent.
     if (!verses.length) return tour
 
     return speechMode === 'passage' ? verses : [...tour, 'The passage.', ...verses]
@@ -401,8 +403,6 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
    */
   useEffect(() => {
     if (!open || !speechOn) return
-    // Nothing to read on the overview or a bare list.
-    if (!isTour && !selectedSaying) return
 
     const timer = window.setTimeout(() => {
       speakRef.current(segmentsRef.current())
@@ -594,7 +594,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              {(isTour || selectedSaying) && narration.supported && (
+              {narration.supported && (
                 <div className="tour-speech-control flex items-center">
                   <button
                     type="button"
@@ -606,7 +606,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                     className={`tour-icon-btn ${speechOn ? 'tour-icon-btn-on' : ''}`}
                     aria-pressed={speechOn}
                     aria-label={
-                      speechOn ? 'Turn narration off' : 'Read the tour aloud'
+                      speechOn ? 'Turn narration off' : 'Read this card aloud'
                     }
                   >
                     {speechOn ? (
@@ -619,21 +619,16 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                     )}
                   </button>
 
-                  {/* Voice and speed stay hidden until narration is actually on. */}
-                  {speechOn && (
-                    <button
-                      type="button"
-                      onClick={() => setVoiceSheetOpen((v) => !v)}
-                      className="tour-icon-btn tour-icon-btn-slim"
-                      aria-expanded={voiceSheetOpen}
-                      aria-label="Voice and speed"
-                    >
-                      <ChevronDown
-                        className={`h-3.5 w-3.5 transition-transform ${voiceSheetOpen ? 'rotate-180' : ''}`}
-                        aria-hidden
-                      />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setVoiceSheetOpen((v) => !v)}
+                    className={`tour-icon-btn ${voiceSheetOpen ? 'tour-icon-btn-on' : ''}`}
+                    aria-expanded={voiceSheetOpen}
+                    aria-label="Voice and language"
+                    title="Voice and language"
+                  >
+                    <Languages className="h-4 w-4" aria-hidden />
+                  </button>
                 </div>
               )}
 
@@ -794,9 +789,9 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                       ))}
                     </select>
                     <span className="mt-1.5 block font-sans text-[10px] leading-relaxed text-pine-300 dark:text-ocean-300">
-                      Grouped by language, from the voices installed on your
-                      device. The tour text stays in English, so another
-                      language&rsquo;s voice will read it in that accent.
+                      Grouped by language, from the voices on this device. After
+                      Google Translate, pick a voice in that language — it reads
+                      the words on the card, not the English original.
                     </span>
                   </label>
 
