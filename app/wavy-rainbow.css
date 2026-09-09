@@ -1,0 +1,240 @@
+/* ============================================================================
+   u-waves — wavy pastel-rainbow page background (OOCSS utility)
+   ----------------------------------------------------------------------------
+   Based on the .u-background-grid utility from raimonvibe_nextjs_nl_oocss:
+   one quadratic-bezier wave, encoded as an inline SVG data URI, tiled with
+   background-repeat. This version stacks seven waves per tile and paints them
+   in pastel rainbow colours.
+
+   To use it in the Next.js project:
+     1. copy this file to  src/styles/utilities/wavy-rainbow.css
+     2. add to src/styles/main.css:
+          @import url('./utilities/wavy-rainbow.css');
+     3. in src/app/layout.tsx:
+          <body className="u-waves u-waves--masked u-waves--animated">
+
+   Two interchangeable techniques are provided:
+     .u-waves--masked  gradient painted through a monochrome SVG mask.
+                       Colours live in CSS variables, so they are themeable
+                       and animatable. Needs mask-image (all modern browsers).
+     .u-waves--baked   colours written straight into the SVG data URI.
+                       Zero dependencies, widest support, but recolouring
+                       means editing the data URI.
+   ========================================================================== */
+
+:root {
+  /* --- page base ---------------------------------------------------------
+     Set on <html>, not <body>, so the fixed z-index:-1 wave layer inside
+     <body> always paints on top of it instead of behind the canvas. */
+  --wave-page-bg: #faf8f7;
+
+  /* --- tile geometry -----------------------------------------------------
+     The SVG tile is authored at 700 x 700 px: seven waves at the source
+     project's 100px vertical period, each running seven 100px wave cycles
+     across. The tile is seven periods wide rather than one so that the
+     rainbow baked into it sweeps a decent distance before repeating -- at one
+     period per tile the colours would cycle every 100px and read as noise
+     rather than as a rainbow. --wave-scale is the single knob that resizes
+     it; the media queries at the bottom only touch that, and the wave period
+     is still 100px at scale 1. */
+  --wave-scale: 1;
+  --wave-tile-w: calc(700px * var(--wave-scale));
+  --wave-tile-h: calc(700px * var(--wave-scale));
+
+  /* --- appearance -------------------------------------------------------- */
+  --wave-opacity: 0.15;
+  --wave-speed: 30s;
+
+  /* Opacity fades the layer toward the page colour, which scales the gap
+     between a colour's channels along with everything else. Only a tenth of
+     that gap survives at 0.1 opacity, and a pastel's channels sit close
+     together by definition, so the hues drain to a single grey well before
+     the lines themselves fade out.
+
+     The --masked variant solves this in the palette below. The --baked
+     variant cannot: its colours are frozen inside the SVG, so the only lever
+     left is a saturate() filter. That works for the mid-ramp hues but stalls
+     on red and violet, where a channel already sits at 255 and
+     luminance-preserving saturation has no headroom to widen the gap.
+
+       1.0 opacity -> saturate(1)     the pastels as authored
+       0.1 opacity -> saturate(4.6)
+
+     The 0.4 sets the strength; the +0.6 pins the curve to 1 at full opacity,
+     so keep the two summing to 1. */
+  --wave-boost: calc(0.4 / var(--wave-opacity) + 0.6);
+
+  /* --- pastel rainbow (used by the --masked variant) ----------------------
+     Authored as hue angles over a shared saturation and lightness rather than
+     as seven fixed hexes, so the ramp can answer --wave-opacity. As the layer
+     fades, the colours walk toward pure hues, which widens the channel gap by
+     exactly as much as the blend is about to narrow it:
+
+       1.0 opacity -> hsl(H 60% 85%)   soft pastel, drawn as-is
+       0.5 opacity -> hsl(H 80% 68%)
+       0.1 opacity -> hsl(H 96% 54%)   near-pure hue, back to pastel once
+                                       the blend has knocked it down
+
+     Generating the colour is what makes this work where a filter could not:
+     there is no clipped channel to fight, so red and violet correct as
+     readily as green and cyan. Change --wave-sat / --wave-light to retune the
+     whole ramp, or the hue angles to reshape it. */
+  --wave-sat: calc(60% + 40% * (1 - var(--wave-opacity)));
+  --wave-light: calc(50% + 35% * var(--wave-opacity));
+
+  --wave-c1: hsl(0 var(--wave-sat) var(--wave-light));     /* red    */
+  --wave-c2: hsl(30 var(--wave-sat) var(--wave-light));    /* orange */
+  --wave-c3: hsl(50 var(--wave-sat) var(--wave-light));    /* yellow */
+  --wave-c4: hsl(128 var(--wave-sat) var(--wave-light));   /* green  */
+  --wave-c5: hsl(189 var(--wave-sat) var(--wave-light));   /* cyan   */
+  --wave-c6: hsl(219 var(--wave-sat) var(--wave-light));   /* blue   */
+  --wave-c7: hsl(255 var(--wave-sat) var(--wave-light));   /* violet */
+
+  /* Horizontal, so the ramp runs along the length of every wave: each line
+     carries the whole rainbow instead of being one flat colour, and every
+     line matches. Sized to 100% of the viewport further down, so the page
+     gets a single sweep left to right rather than a repeating band. Give it
+     an angle (115deg reads well) to let the colour drift down the page too. */
+  --wave-gradient: linear-gradient(to right,
+    var(--wave-c1), var(--wave-c2), var(--wave-c3), var(--wave-c4),
+    var(--wave-c5), var(--wave-c6), var(--wave-c7));
+
+  /* --- the tiles ---------------------------------------------------------
+     Seven waves 100px apart inside a 700x700 box. Each path opens with the
+     source project's shape unchanged and then keeps going:
+
+         M0,y Q25,y-20 50,y T100,y T150,y ... T700,y
+
+     A quadratic peaks at the midpoint between its endpoints and its control
+     point, so the line swings from y-10 to y+10 — a 20px band with 80px of
+     air beneath it, exactly the spacing .u-background-grid produces from a
+     100x100 tile. Each T mirrors the previous control point, which is what
+     lets a single path carry seven smooth cycles instead of needing seven
+     separate ones. Start and end sit at the same height with mirrored slopes,
+     so the tile repeats seamlessly both horizontally and vertically, and the
+     first wave of the next tile lands 100px below the last of this one.
+
+     The colour tile strokes every path with a linearGradient in
+     userSpaceOnUse units, so all seven lines share one ramp measured across
+     the tile width. Left on the default objectBoundingBox units each path
+     would instead get its own copy scaled to its own box.
+
+     That ramp returns to the first colour at the tile edge -- eight stops for
+     seven colours -- because the tile repeats. Ending on violet next to the
+     next tile's red would put a hard seam every 700px. The --masked variant
+     needs no such wrap: its gradient is sized to the viewport and never
+     repeats.
+
+     Encoding rules for an SVG data URI in CSS: single-quote the attributes,
+     percent-encode < > as %3C %3E, and — easy to miss — # as %23. */
+  --wave-tile-color: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cdefs%3E%3ClinearGradient id='w' gradientUnits='userSpaceOnUse' x1='0' y1='0' x2='700' y2='0'%3E%3Cstop offset='0.0' stop-color='%23ffb3b3'/%3E%3Cstop offset='0.1429' stop-color='%23ffd1a1'/%3E%3Cstop offset='0.2857' stop-color='%23f2e39b'/%3E%3Cstop offset='0.4286' stop-color='%23b8efc0'/%3E%3Cstop offset='0.5714' stop-color='%23a5e4f0'/%3E%3Cstop offset='0.7143' stop-color='%23a9c4f5'/%3E%3Cstop offset='0.8571' stop-color='%23c6b8f5'/%3E%3Cstop offset='1.0' stop-color='%23ffb3b3'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='none' stroke='url(%23w)' stroke-width='2'%3E%3Cpath d='M0,40 Q25,20 50,40 T100,40 T150,40 T200,40 T250,40 T300,40 T350,40 T400,40 T450,40 T500,40 T550,40 T600,40 T650,40 T700,40'/%3E%3Cpath d='M0,140 Q25,120 50,140 T100,140 T150,140 T200,140 T250,140 T300,140 T350,140 T400,140 T450,140 T500,140 T550,140 T600,140 T650,140 T700,140'/%3E%3Cpath d='M0,240 Q25,220 50,240 T100,240 T150,240 T200,240 T250,240 T300,240 T350,240 T400,240 T450,240 T500,240 T550,240 T600,240 T650,240 T700,240'/%3E%3Cpath d='M0,340 Q25,320 50,340 T100,340 T150,340 T200,340 T250,340 T300,340 T350,340 T400,340 T450,340 T500,340 T550,340 T600,340 T650,340 T700,340'/%3E%3Cpath d='M0,440 Q25,420 50,440 T100,440 T150,440 T200,440 T250,440 T300,440 T350,440 T400,440 T450,440 T500,440 T550,440 T600,440 T650,440 T700,440'/%3E%3Cpath d='M0,540 Q25,520 50,540 T100,540 T150,540 T200,540 T250,540 T300,540 T350,540 T400,540 T450,540 T500,540 T550,540 T600,540 T650,540 T700,540'/%3E%3Cpath d='M0,640 Q25,620 50,640 T100,640 T150,640 T200,640 T250,640 T300,640 T350,640 T400,640 T450,640 T500,640 T550,640 T600,640 T650,640 T700,640'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Same geometry, flat black. Masks read the alpha channel, so the strokes
+     become "show the gradient here" and the empty tile stays transparent. */
+  --wave-tile-mono: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cg fill='none' stroke='%23000' stroke-width='2'%3E%3Cpath d='M0,40 Q25,20 50,40 T100,40 T150,40 T200,40 T250,40 T300,40 T350,40 T400,40 T450,40 T500,40 T550,40 T600,40 T650,40 T700,40'/%3E%3Cpath d='M0,140 Q25,120 50,140 T100,140 T150,140 T200,140 T250,140 T300,140 T350,140 T400,140 T450,140 T500,140 T550,140 T600,140 T650,140 T700,140'/%3E%3Cpath d='M0,240 Q25,220 50,240 T100,240 T150,240 T200,240 T250,240 T300,240 T350,240 T400,240 T450,240 T500,240 T550,240 T600,240 T650,240 T700,240'/%3E%3Cpath d='M0,340 Q25,320 50,340 T100,340 T150,340 T200,340 T250,340 T300,340 T350,340 T400,340 T450,340 T500,340 T550,340 T600,340 T650,340 T700,340'/%3E%3Cpath d='M0,440 Q25,420 50,440 T100,440 T150,440 T200,440 T250,440 T300,440 T350,440 T400,440 T450,440 T500,440 T550,440 T600,440 T650,440 T700,440'/%3E%3Cpath d='M0,540 Q25,520 50,540 T100,540 T150,540 T200,540 T250,540 T300,540 T350,540 T400,540 T450,540 T500,540 T550,540 T600,540 T650,540 T700,540'/%3E%3Cpath d='M0,640 Q25,620 50,640 T100,640 T150,640 T200,640 T250,640 T300,640 T350,640 T400,640 T450,640 T500,640 T550,640 T600,640 T650,640 T700,640'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* --- theming ---------------------------------------------------------------
+   Light is the default. html.theme-dark is the stored dark choice — same
+   switch the rest of the app uses. Scale stays at 1 so the rainbow period
+   does not jump when the theme does. */
+:root {
+  color-scheme: light;
+}
+
+html.theme-dark {
+  color-scheme: dark;
+  /* Near-black with a whisper of violet so the ground sits with the dusk UI
+     instead of reading as forest green. Keep it quieter than ocean-950. */
+  --wave-page-bg: #0c0b12;
+  --wave-scale: 1;
+  --wave-opacity: 0.1;
+}
+
+html {
+  background-color: var(--wave-page-bg);
+}
+
+/* --- the layer -------------------------------------------------------------
+   A fixed pseudo-element rather than a background on <body> itself. That
+   buys three things: the waves stay put while the page scrolls (without the
+   janky background-attachment: fixed), opacity is tunable from a variable,
+   and the whole layer can be filtered or animated as one cheap composited
+   surface. */
+.u-waves {
+  position: relative;
+}
+
+.u-waves::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--wave-opacity);
+  filter: saturate(var(--wave-boost));
+}
+
+/* --- variant: colours baked into the SVG ---------------------------------- */
+.u-waves--baked::before {
+  background-image: var(--wave-tile-color);
+  background-size: var(--wave-tile-w) var(--wave-tile-h);
+  background-repeat: repeat;
+}
+
+/* --- variant: gradient through a mask ------------------------------------- */
+.u-waves--masked::before {
+  background-image: var(--wave-gradient);
+  /* One ramp stretched across the viewport, so the full rainbow is visible
+     at rest rather than a single slice of it. */
+  background-size: 100% 100%;
+  -webkit-mask-image: var(--wave-tile-mono);
+          mask-image: var(--wave-tile-mono);
+  -webkit-mask-size: var(--wave-tile-w) var(--wave-tile-h);
+          mask-size: var(--wave-tile-w) var(--wave-tile-h);
+  -webkit-mask-repeat: repeat;
+          mask-repeat: repeat;
+}
+
+/* The masked palette already walks toward pure hues as it fades, so the
+   saturate() correction would only stack on top of itself. */
+.u-waves--masked {
+  --wave-boost: 1;
+}
+
+/* Anything without mask support falls back to the baked tile. */
+@supports not ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+  .u-waves--masked::before {
+    background-image: var(--wave-tile-color);
+    background-size: var(--wave-tile-w) var(--wave-tile-h);
+    background-repeat: repeat;
+  }
+}
+
+/* --- modifier: animation ---------------------------------------------------
+   hue-rotate walks the whole colour wheel and lands back on 360deg = 0deg,
+   so the loop is seamless without lining up any background-position maths.
+   It only touches the wave layer, since everything else in it is
+   transparent. */
+.u-waves--animated::before {
+  animation: u-waves-hue var(--wave-speed) linear infinite;
+  will-change: filter;
+}
+
+/* Both keyframes have to repeat the saturate(), because an animation on
+   `filter` replaces the whole property rather than adding to it. The var()
+   resolves once at computed-value time and does not change mid-animation, so
+   the two frames differ only in the angle and interpolate cleanly. */
+@keyframes u-waves-hue {
+  from { filter: saturate(var(--wave-boost)) hue-rotate(0deg); }
+  to   { filter: saturate(var(--wave-boost)) hue-rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-waves--animated::before {
+    animation: none;
+  }
+}
+
+/* Scale is locked at 1 for both themes, so the rainbow period stays the same
+   on every screen. */

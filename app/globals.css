@@ -1,0 +1,816 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * Page colour lives on <html> (see wavy-rainbow.css). The waves are a
+   * fixed layer on <body>, so they stay put while the page scrolls and the
+   * rubber-band / toolbar gap still shows the same paper colour.
+   */
+  html {
+    @apply scroll-smooth;
+    background-color: var(--wave-page-bg);
+    min-height: 100vh;
+  }
+
+  /* The tour scrolls the reader to each passage; smooth scrolling is motion
+     too, and it is the largest movement in the app. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    @apply font-serif text-pine-50;
+    background-color: transparent;
+    min-height: 100vh;
+  }
+
+  html.theme-dark body {
+    @apply text-ocean-50;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  .card-surface {
+    @apply backdrop-blur-md rounded-2xl shadow-xl border bg-card-pine;
+    border-color: rgba(74, 68, 88, 0.14);
+  }
+
+  html.theme-dark .card-surface {
+    @apply bg-card-ocean;
+    border-color: rgba(235, 232, 242, 0.16);
+  }
+
+  .btn-surface {
+    @apply bg-pine-700/90 hover:bg-pine-600 text-pine-50 transition-all
+      dark:bg-ocean-700/80 dark:hover:bg-ocean-600 dark:text-ocean-50;
+  }
+
+  .btn-surface-muted {
+    @apply bg-pine-800/70 text-pine-400 cursor-not-allowed
+      dark:bg-ocean-900/60 dark:text-ocean-500;
+  }
+
+  .bg-selection-gradient {
+    background: linear-gradient(135deg, #4a4458 0%, #2c2838 100%);
+    color: #faf8f7;
+  }
+
+  html.theme-dark .bg-selection-gradient {
+    background: linear-gradient(135deg, #383248 0%, #100d16 100%);
+  }
+
+  .verse-num {
+    @apply font-sans font-semibold text-xs mr-1 select-none text-pine-300;
+  }
+
+  html.theme-dark .verse-num {
+    @apply text-ocean-400;
+  }
+
+  .verse {
+    @apply block mb-3 leading-relaxed;
+  }
+
+  /* Highlights keep the shared accent on both grounds. */
+  .search-highlight {
+    @apply rounded px-0.5 bg-accent/30 text-pine-50 font-medium;
+  }
+
+  html.theme-dark .search-highlight {
+    @apply bg-accent/30 text-ocean-50;
+  }
+
+  /* Official WEB words of Jesus. Warm on both dark grounds so it stays
+     readable and distinct from the amber spotlight used for a selected range. */
+  .words-of-jesus {
+    color: #c23b2e;
+    font-weight: 500;
+  }
+
+  html.theme-dark .words-of-jesus {
+    color: #ffc2b0;
+  }
+
+  .read-aloud-active {
+    @apply rounded-lg bg-accent/20 ring-2 ring-accent/45;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  html.theme-dark .read-aloud-active {
+    @apply bg-accent/20 ring-accent/45;
+  }
+
+  .fixed-viewport-anchor {
+    position: fixed;
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    bottom: calc(
+      max(1rem, env(safe-area-inset-bottom, 0px)) + var(--vv-offset-bottom, 0px)
+    );
+    right: auto;
+    top: auto;
+    max-width: min(100vw - 2rem, 22rem);
+  }
+
+  .fixed-viewport-panel {
+    width: min(calc(100vw - 2rem), 22rem);
+    max-height: min(
+      70dvh,
+      calc(
+        var(--vv-height, 100dvh) - 7rem - env(safe-area-inset-top, 0px) -
+          var(--vv-offset-bottom, 0px)
+      )
+    );
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .listen-panel-header {
+    background: linear-gradient(135deg, #e8e4ec 0%, #faf8f7 100%);
+  }
+
+  html.theme-dark .listen-panel-header {
+    background: linear-gradient(135deg, #241f30 0%, #100d16 100%);
+  }
+
+  .listen-play-btn {
+    background: linear-gradient(135deg, #c6b8f5 0%, #a9c4f5 50%, #a5e4f0 100%);
+    color: #2c2838;
+  }
+
+  html.theme-dark .listen-play-btn {
+    background: linear-gradient(135deg, #6c6478 0%, #383248 50%, #100d16 100%);
+    color: #ebe8f2;
+  }
+
+  .listen-fab-idle {
+    background: linear-gradient(135deg, #c6b8f5 0%, #ffb3b3 100%);
+    box-shadow: 0 6px 28px rgba(74, 68, 88, 0.18);
+    color: #2c2838;
+  }
+
+  html.theme-dark .listen-fab-idle {
+    background: linear-gradient(135deg, #383248 0%, #100d16 100%);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+    color: #ebe8f2;
+  }
+
+  .listen-progress-bar {
+    background: linear-gradient(90deg, #ffb3b3 0%, #a9c4f5 50%, #c6b8f5 100%);
+  }
+
+  html.theme-dark .listen-progress-bar {
+    background: linear-gradient(90deg, #a79db8 0%, #6c6478 100%);
+  }
+
+  .listen-range {
+    accent-color: #a9c4f5;
+  }
+
+  html.theme-dark .listen-range {
+    accent-color: #8a8098;
+  }
+
+  .listen-wave {
+    height: 8px;
+  }
+
+  .listen-wave-active {
+    animation: listen-wave 0.9s ease-in-out infinite;
+  }
+
+  @keyframes listen-wave {
+    0%,
+    100% {
+      height: 8px;
+    }
+    25% {
+      height: 22px;
+    }
+    50% {
+      height: 10px;
+    }
+    75% {
+      height: 18px;
+    }
+  }
+
+  @keyframes listen-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .animate-listen-panel-in {
+    animation: listen-panel-in 0.28s ease-out;
+  }
+
+  /* ---------------------------------------------------------------------
+   * Guided tour — What Jesus Said
+   *
+   * Two layouts, split at SPLIT_MIN_WIDTH (960px, mirrored in
+   * components/GuidedTour.tsx — move both together):
+   *
+   *  - wide  → a true 50/50: Bible left, tour docked full-height on the right.
+   *            Each side scrolls on its own (the page scrolls the left, the
+   *            panel body scrolls the right).
+   *  - narrow → the launcher and panel anchor bottom-right, and the panel acts
+   *            as a bottom sheet over a full-width Bible.
+   * ------------------------------------------------------------------- */
+
+  .tour-anchor {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    bottom: calc(
+      max(1rem, env(safe-area-inset-bottom, 0px)) + var(--vv-offset-bottom, 0px)
+    );
+    left: auto;
+    top: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.75rem;
+    max-width: min(calc(100vw - 2rem), 25rem);
+    pointer-events: none;
+  }
+
+  @media (min-width: 640px) {
+    .tour-anchor {
+      right: 1.5rem;
+      bottom: calc(1.5rem + var(--vv-offset-bottom, 0px));
+    }
+  }
+
+  .tour-fab {
+    position: relative;
+    background: linear-gradient(135deg, #c6b8f5 0%, #a9c4f5 50%, #ffd1a1 100%);
+    color: #2c2838;
+    box-shadow: 0 6px 28px rgba(74, 68, 88, 0.18);
+  }
+
+  html.theme-dark .tour-fab {
+    background: linear-gradient(135deg, #383248 0%, #16131e 55%, #100d16 100%);
+    color: #ebe8f2;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Opaque on purpose: the panel sits directly over running text, and any
+     translucency makes both the panel and the passage harder to read. */
+  .tour-panel-shell {
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(74, 68, 88, 0.16);
+  }
+
+  html.theme-dark .tour-panel-shell {
+    background: #16131e;
+    border-color: rgba(235, 232, 242, 0.16);
+  }
+
+  .tour-panel {
+    width: min(calc(100vw - 2rem), 25rem);
+    max-height: min(
+      78dvh,
+      calc(
+        var(--vv-height, 100dvh) - 5rem - env(safe-area-inset-top, 0px) -
+          var(--vv-offset-bottom, 0px)
+      )
+    );
+    animation: tour-panel-in 0.3s ease-out;
+  }
+
+  /* Reserved by the guided tour so the Bible keeps to the left half. Sits on
+     the page wrapper rather than the inner max-w container, so the reading
+     column re-centres inside what is left instead of being squeezed against it.
+     Zero whenever the tour is closed or is acting as a bottom sheet. */
+  .tour-safe-inset {
+    padding-right: var(--reader-safe-right, 0px);
+    transition: padding-right 0.3s ease;
+  }
+
+  /* Fixed page controls that must stay clear of the docked panel. */
+  .tour-safe-right {
+    right: calc(1rem + var(--reader-safe-right, 0px));
+    transition: right 0.3s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tour-safe-inset,
+    .tour-safe-right {
+      transition: none;
+    }
+  }
+
+  /* Too narrow for a 50/50, so the panel becomes a bottom sheet: keep it short
+     enough that the passage stays visible above it. */
+  @media (max-width: 959px) {
+    .tour-panel {
+      max-height: min(
+        58dvh,
+        calc(
+          var(--vv-height, 100dvh) - 6rem - env(safe-area-inset-top, 0px) -
+            var(--vv-offset-bottom, 0px)
+        )
+      );
+    }
+
+    /* Nothing to keep in view behind the narration settings, so give them room. */
+    .tour-panel[data-voice-sheet='true'] {
+      max-height: min(
+        82dvh,
+        calc(
+          var(--vv-height, 100dvh) - 4rem - env(safe-area-inset-top, 0px) -
+            var(--vv-offset-bottom, 0px)
+        )
+      );
+    }
+  }
+
+  /* Landscape phones and short windows: reclaim every pixel and drop the
+     keyboard hint, which is the least useful line on a touch device anyway.
+     Scoped to wider viewports — on a window that is both narrow and short the
+     rule above must win, or the sheet swallows the whole screen. */
+  @media (max-height: 560px) and (min-width: 640px) and (max-width: 959px) {
+    .tour-panel {
+      max-height: calc(
+        var(--vv-height, 100dvh) - 2.5rem - env(safe-area-inset-top, 0px) -
+          var(--vv-offset-bottom, 0px)
+      );
+    }
+
+    .tour-hint {
+      display: none;
+    }
+  }
+
+  /* --- desktop 50/50 -----------------------------------------------------
+     `.tour-dock` is only on the open panel's anchor, so the launcher and the
+     minimized pill keep their bottom-right corner at every width. */
+  @media (min-width: 960px) {
+    .tour-anchor.tour-dock {
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: auto;
+      /* Percent, not vw: both this and the page's reserved padding resolve
+         against the layout viewport, so a classic scrollbar cannot make the
+         two halves disagree the way `50vw` (which counts it) would. */
+      width: 50%;
+      max-width: none;
+      gap: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+
+    .tour-dock .tour-panel {
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      border-radius: 0;
+      border-top: 0;
+      border-right: 0;
+      border-bottom: 0;
+      animation: tour-panel-in-right 0.3s ease-out;
+    }
+  }
+
+  @keyframes tour-panel-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .tour-panel-body {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #d4cfd8 transparent;
+  }
+
+  html.theme-dark .tour-panel-body {
+    scrollbar-color: #383248 transparent;
+  }
+
+  .tour-panel-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .tour-panel-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tour-panel-body::-webkit-scrollbar-thumb {
+    background: #d4cfd8;
+    border-radius: 9999px;
+  }
+
+  html.theme-dark .tour-panel-body::-webkit-scrollbar-thumb {
+    background: #383248;
+  }
+
+  .tour-icon-btn {
+    @apply flex min-h-9 min-w-9 items-center justify-center rounded-lg
+      text-pine-300 transition-colors hover:bg-pine-700/70 hover:text-pine-50
+      dark:text-ocean-400 dark:hover:bg-ocean-800/70 dark:hover:text-ocean-100;
+  }
+
+  /* Speech toggle + its options caret, read as one control. */
+  .tour-speech-control {
+    @apply rounded-lg;
+  }
+
+  .tour-icon-btn-on {
+    @apply bg-pine-700/80 text-pine-50 dark:bg-ocean-800 dark:text-ocean-50;
+  }
+
+  .tour-icon-btn-slim {
+    @apply min-w-7;
+  }
+
+  /* Tour / Passage / Both. Grouped on a recessed track so three bare icons read
+     as one segmented control rather than three loose buttons. */
+  .tour-mode-group {
+    @apply inline-flex items-center gap-0.5 rounded-xl bg-pine-800/70 p-0.5
+      dark:bg-ocean-900/60;
+  }
+
+  .tour-mode-btn {
+    @apply flex min-h-9 min-w-9 items-center justify-center rounded-lg
+      text-pine-300 transition-colors hover:bg-pine-700/70 hover:text-pine-50
+      dark:text-ocean-300 dark:hover:bg-ocean-800/70 dark:hover:text-ocean-50;
+  }
+
+  .tour-mode-btn-on {
+    @apply bg-pine-100 text-pine-900 hover:bg-pine-100 hover:text-pine-900
+      dark:bg-ocean-200 dark:text-ocean-950 dark:hover:bg-ocean-200
+      dark:hover:text-ocean-950;
+  }
+
+  .tour-speaking {
+    animation: tour-speaking 1.4s ease-in-out infinite;
+  }
+
+  @keyframes tour-speaking {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.55;
+      transform: scale(0.88);
+    }
+  }
+
+  .tour-voice-sheet {
+    background: #faf8f7;
+  }
+
+  html.theme-dark .tour-voice-sheet {
+    background: #16131e;
+  }
+
+  .tour-progress-bar {
+    background: linear-gradient(90deg, #ffb3b3 0%, #a9c4f5 50%, #c6b8f5 100%);
+  }
+
+  html.theme-dark .tour-progress-bar {
+    background: linear-gradient(90deg, #a79db8 0%, #6c6478 100%);
+  }
+
+  .tour-next-btn {
+    background: linear-gradient(135deg, #c6b8f5 0%, #a9c4f5 50%, #a5e4f0 100%);
+    color: #2c2838;
+  }
+
+  html.theme-dark .tour-next-btn {
+    background: linear-gradient(135deg, #6c6478 0%, #100d16 100%);
+    color: #ebe8f2;
+  }
+
+  @keyframes tour-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* The passage the tour is currently talking about. Uses the shared accent in
+     both themes so "you are here" never reads as a testament colour. */
+  .verse-spotlight {
+    border-radius: 0.5rem;
+    margin-left: -0.85rem;
+    padding: 0.35rem 0.6rem 0.35rem 0.85rem;
+    background: linear-gradient(
+      90deg,
+      rgba(244, 162, 97, 0.28) 0%,
+      rgba(244, 162, 97, 0.06) 100%
+    );
+    box-shadow: inset 3px 0 0 0 #f4a261;
+    animation: verse-spotlight-in 0.6s ease-out;
+  }
+
+  @keyframes verse-spotlight-in {
+    from {
+      opacity: 0.55;
+      transform: translateX(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Everything that moves, in one place. Tailwind's animate-* utilities are
+     not motion-aware by default, so they have to be named explicitly or they
+     keep pulsing for someone who asked for stillness. */
+  @media (prefers-reduced-motion: reduce) {
+    .tour-panel,
+    .verse-spotlight,
+    .tour-speaking,
+    .listen-wave-active,
+    .animate-listen-panel-in,
+    .animate-ping,
+    .animate-pulse {
+      animation: none;
+    }
+  }
+}
+
+@layer components {
+  /* The reading column is full-width with the tour closed and half-width with
+     it docked, so the grids inside size against this box rather than the
+     viewport — otherwise a 1440px window keeps five book columns crammed into
+     a 720px pane. Column counts match the old viewport breakpoints. */
+  .reader-container {
+    container-type: inline-size;
+  }
+
+  .grid-books,
+  .grid-chapters {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .grid-books {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-chapters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @container (min-width: 640px) {
+    .grid-books {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-chapters {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 768px) {
+    .grid-books,
+    .grid-chapters {
+      gap: 0.75rem;
+    }
+
+    .grid-books {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .grid-chapters {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+  }
+
+  @container (min-width: 1024px) {
+    .grid-books {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .grid-chapters {
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Social icons — layout from amsterdam-metro-v2. Brand colours only on hover
+   so the row blends with pine (light) and ocean (dark) until it is focused. */
+.social-icons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+}
+
+.social-icons li {
+  display: flex;
+  flex: 1 1 0;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.social-icons .icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border-bottom: none;
+  position: relative;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  color: #6b6578;
+  transition: color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+}
+
+html.theme-dark .social-icons .icon {
+  color: #a79db8;
+}
+
+.social-icons .icon::before {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+  text-transform: none !important;
+  font-family: "Font Awesome 6 Free";
+  font-weight: 400;
+  font-size: 1.35rem;
+  color: inherit;
+  background-image: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease,
+    filter 0.2s ease,
+    text-shadow 0.2s ease,
+    -webkit-text-fill-color 0.2s ease;
+}
+
+.social-icons .icon.solid::before {
+  font-weight: 900;
+}
+
+.social-icons .icon.brands::before {
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+  opacity: 0.92;
+}
+
+.social-icons .icon > .label {
+  display: none;
+}
+
+.social-icons .icon:hover,
+.social-icons .icon:focus-visible {
+  color: #2c2838;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+html.theme-dark .social-icons .icon:hover,
+html.theme-dark .social-icons .icon:focus-visible {
+  color: #ebe8f2;
+}
+
+.social-icons .icon.brands:hover::before,
+.social-icons .icon.brands:focus-visible::before {
+  opacity: 1;
+  filter: saturate(1.15);
+}
+
+.social-icons .fa-youtube:hover::before,
+.social-icons .fa-youtube:focus-visible::before {
+  color: #ff0000;
+  -webkit-text-fill-color: #ff0000;
+}
+
+.social-icons .fa-facebook-f:hover::before,
+.social-icons .fa-facebook-f:focus-visible::before {
+  color: #1877f2;
+  -webkit-text-fill-color: #1877f2;
+}
+
+.social-icons .fa-linkedin-in:hover::before,
+.social-icons .fa-linkedin-in:focus-visible::before {
+  color: #0a66c2;
+  -webkit-text-fill-color: #0a66c2;
+}
+
+.social-icons .fa-x-twitter:hover::before,
+.social-icons .fa-x-twitter:focus-visible::before,
+.social-icons .fa-github:hover::before,
+.social-icons .fa-github:focus-visible::before,
+.social-icons .fa-medium-m:hover::before,
+.social-icons .fa-medium-m:focus-visible::before {
+  color: #000;
+  -webkit-text-fill-color: #000;
+}
+
+.social-icons .fa-tiktok:hover::before,
+.social-icons .fa-tiktok:focus-visible::before {
+  color: #000;
+  -webkit-text-fill-color: #000;
+  text-shadow: -1.5px -1.5px 0 #25f4ee, 1.5px 1.5px 0 #fe2c55;
+}
+
+.social-icons .fa-instagram:hover::before,
+.social-icons .fa-instagram:focus-visible::before {
+  background-image: linear-gradient(
+    45deg,
+    #ffdc80 0%,
+    #fcaf45 12%,
+    #f77737 25%,
+    #f56040 38%,
+    #fd1d1d 50%,
+    #e1306c 62%,
+    #c13584 75%,
+    #833ab4 87%,
+    #5851db 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+html.theme-dark .social-icons .fa-x-twitter:hover::before,
+html.theme-dark .social-icons .fa-x-twitter:focus-visible::before,
+html.theme-dark .social-icons .fa-github:hover::before,
+html.theme-dark .social-icons .fa-github:focus-visible::before,
+html.theme-dark .social-icons .fa-medium-m:hover::before,
+html.theme-dark .social-icons .fa-medium-m:focus-visible::before,
+html.theme-dark .social-icons .fa-tiktok:hover::before,
+html.theme-dark .social-icons .fa-tiktok:focus-visible::before {
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .social-icons .icon,
+  .social-icons .icon::before {
+    transition: none;
+  }
+
+  .social-icons .icon:hover,
+  .social-icons .icon:focus-visible {
+    transform: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .social-icons .icon.brands::before,
+  .social-icons .icon.brands:hover::before,
+  .social-icons .icon.brands:focus-visible::before {
+    background-image: none;
+    color: currentColor;
+    -webkit-text-fill-color: currentColor;
+    text-shadow: none;
+    filter: none;
+    opacity: 1;
+  }
+}
