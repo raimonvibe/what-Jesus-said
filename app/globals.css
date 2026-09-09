@@ -524,7 +524,11 @@
     display: none;
   }
 
-  @media (min-width: 960px) {
+  /* Docked and tall enough: the picker is always open, so its summary is dead
+     weight. Short and wide is the exception — there the panel has to fold, and
+     hiding the summary would leave no way to open it again. The height here
+     mirrors COMPACT_MAX_HEIGHT in components/GuidedTour.tsx. */
+  @media (min-width: 960px) and (min-height: 481px) {
     .tour-speech-settings summary {
       display: none;
     }
@@ -591,6 +595,19 @@
     @apply bg-pine-100 text-pine-900 hover:bg-pine-100 hover:text-pine-900
       dark:bg-ocean-200 dark:text-ocean-950 dark:hover:bg-ocean-200
       dark:hover:text-ocean-950;
+  }
+
+  /* Short viewports — a landscape phone, or any window under ~480px tall.
+     The header, voice bar and footer are all fixed-height, so at full size
+     they leave the card barely a line to read. These are the two controls
+     whose height comes from @apply, so they have to be trimmed after the
+     rules above; the rest is in components/GuidedTour.tsx behind
+     COMPACT_MAX_HEIGHT — move both together. */
+  @media (max-height: 480px) {
+    .tour-pane-switch button,
+    .tour-mode-btn {
+      min-height: 2.25rem;
+    }
   }
 
   .tour-speaking {

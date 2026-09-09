@@ -112,6 +112,14 @@ const LAST_STEP = SAYING_STEPS.length - 1
  */
 const SPLIT_MIN_WIDTH = 960
 
+/**
+ * At or below this the panel is chrome-poor: a landscape phone is only
+ * 375–430px tall, and the header, voice bar and footer are all fixed-height,
+ * so at full size they leave the card barely a line to read. Mirrored by the
+ * `480px` media query in app/globals.css — move both together.
+ */
+const COMPACT_MAX_HEIGHT = 480
+
 /** Give the reader time to open the chapter before reading the passage from it. */
 const NARRATION_DELAY = 450
 
@@ -152,6 +160,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
   const [pathState, setPathState] = useState<PathState>(DEFAULT_PATH_STATE)
   const [selectedSaying, setSelectedSaying] = useState<Saying | null>(null)
   const [splitLayout, setSplitLayout] = useState(false)
+  const [compact, setCompact] = useState(false)
 
   const narration = useTourNarration()
   const {
@@ -183,11 +192,19 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
   }, [])
 
   useEffect(() => {
-    const query = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`)
-    const sync = () => setSplitLayout(query.matches)
+    const split = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`)
+    const short = window.matchMedia(`(max-height: ${COMPACT_MAX_HEIGHT}px)`)
+    const sync = () => {
+      setSplitLayout(split.matches)
+      setCompact(short.matches)
+    }
     sync()
-    query.addEventListener('change', sync)
-    return () => query.removeEventListener('change', sync)
+    split.addEventListener('change', sync)
+    short.addEventListener('change', sync)
+    return () => {
+      split.removeEventListener('change', sync)
+      short.removeEventListener('change', sync)
+    }
   }, [])
 
   const isTour = view === 'tour'
@@ -729,7 +746,9 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
           <div
             role="tablist"
             aria-label="Show His words or the passage"
-            className="tour-pane-switch mt-2.5 min-[960px]:hidden"
+            className={`tour-pane-switch min-[960px]:hidden ${
+              compact ? 'mt-1.5' : 'mt-2.5'
+            }`}
           >
             <button type="button" role="tab" aria-selected={true}>
               His words
@@ -750,7 +769,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
             <div
               role="radiogroup"
               aria-label="What to narrate"
-              className="mt-2.5"
+              className={compact ? 'mt-1.5' : 'mt-2.5'}
             >
               <div className="tour-mode-group">
                 {SPEECH_MODES.map((m) => {
@@ -774,8 +793,9 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
             </div>
           )}
 
-          {/* group pills */}
-          {isTour && groupPills.length > 0 && (
+          {/* group pills — dropped on a short screen, where the row costs more
+              than it gives: Skip and the footer dots reach the same steps. */}
+          {isTour && !compact && groupPills.length > 0 && (
             <div className="mt-2.5 flex items-center gap-1.5">
               {groupPills.map((g) => (
                 <button
@@ -827,9 +847,15 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
         {narration.supported && speechOn && (
           <details
             className="tour-speech-settings shrink-0 border-b border-pine-600/70 dark:border-ocean-700/70"
-            {...(splitLayout ? { open: true } : {})}
+            {...(splitLayout && !compact ? { open: true } : {})}
           >
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 font-sans text-xs font-semibold text-pine-100 dark:text-ocean-100 min-[960px]:hidden">
+            {/* Docked wide, the picker is always open and the summary is dead
+                weight — but not on a short screen, where it has to fold. */}
+            <summary
+              className={`flex cursor-pointer list-none items-center justify-between gap-2 px-4 font-sans text-xs font-semibold text-pine-100 dark:text-ocean-100 ${
+                compact ? 'min-h-9' : 'min-h-11 min-[960px]:hidden'
+              }`}
+            >
               Voice &amp; speed
             </summary>
             <div className="tour-speech-settings-body space-y-2 px-3 py-2 min-[960px]:space-y-3 min-[960px]:px-4 min-[960px]:py-3">
@@ -860,7 +886,9 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div
             ref={bodyRef}
-            className="tour-panel-body min-h-0 flex-1 overflow-y-auto px-4 py-4"
+            className={`tour-panel-body min-h-0 flex-1 overflow-y-auto px-4 ${
+              compact ? 'py-2.5' : 'py-4'
+            }`}
           >
             {/* ===================================================================
                 First visit — the beginner overview (path F)
@@ -1230,10 +1258,18 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
 
         {/* footer */}
         {isTour && (
-        <div className="shrink-0 border-t border-pine-600/70 px-4 py-3 dark:border-ocean-700/70">
+        <div
+            className={`shrink-0 border-t border-pine-600/70 px-4 dark:border-ocean-700/70 ${
+              compact ? 'py-1.5' : 'py-3'
+            }`}
+          >
             {/* item stepper */}
             {itemDots.length > 0 && (
-              <div className="mb-2.5 flex items-center justify-center gap-1.5">
+              <div
+                className={`flex items-center justify-center gap-1.5 ${
+                  compact ? 'mb-1.5' : 'mb-2.5'
+                }`}
+              >
                 {itemDots.map((d) => {
                   const active = stepIndex === d.target
                   return (
@@ -1309,9 +1345,11 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
               )}
             </div>
 
-          <p className="tour-hint mt-2 text-center font-sans text-[10px] text-pine-300 dark:text-ocean-300">
-              ← → to move · Esc to leave · you can exit at any time
-            </p>
+          {!compact && (
+              <p className="tour-hint mt-2 text-center font-sans text-[10px] text-pine-300 dark:text-ocean-300">
+                ← → to move · Esc to leave · you can exit at any time
+              </p>
+            )}
         </div>
         )}
       </section>
