@@ -66,7 +66,7 @@ import {
 import type { Saying } from '@/lib/sayings/types'
 import VoicePicker from '@/components/VoicePicker'
 import { useTourNarration, type SpeechMode } from '@/hooks/useTourNarration'
-import { extractSpokenBlocks } from '@/lib/readAloud'
+import { extractSpokenBlocks, spokenPassageCue, waitForSpokenText } from '@/lib/readAloud'
 import { snapViewportX } from '@/hooks/useFixedViewportInsets'
 
 /** Where the tour wants the reader to be. */
@@ -151,6 +151,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
   const [view, setView] = useState<'overview' | 'browse' | 'tour'>('browse')
   const [pathState, setPathState] = useState<PathState>(DEFAULT_PATH_STATE)
   const [selectedSaying, setSelectedSaying] = useState<Saying | null>(null)
+  const [splitLayout, setSplitLayout] = useState(false)
 
   const narration = useTourNarration()
   const {
@@ -179,6 +180,14 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     } catch {
       setSeen(true)
     }
+  }, [])
+
+  useEffect(() => {
+    const query = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`)
+    const sync = () => setSplitLayout(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
   }, [])
 
   const isTour = view === 'tour'
@@ -400,7 +409,9 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
 
     if (!verses.length) return tour
 
-    return speechMode === 'passage' ? verses : [...tour, 'The passage.', ...verses]
+    return speechMode === 'passage'
+      ? verses
+      : [...tour, spokenPassageCue(panelRef.current), ...verses]
   }, [sayingStep, speechMode, isTour, selectedSaying])
 
   // Held in a ref so the narration effect keys off the settings, not identity.
@@ -410,18 +421,59 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
   /**
    * Speech mode: when it is on, each step is read as you arrive at it, and
    * changing a voice, speed or mode re-reads the current step so the choice can
-   * be heard straight away.
+   * be heard straight away. After Google Translate, wait for the card rewrite
+   * so the voice is not still speaking English.
    */
   useEffect(() => {
     if (!open || !speechOn) return
+    let cancelled = false
 
     const timer = window.setTimeout(() => {
-      speakRef.current(segmentsRef.current())
+      const run = async () => {
+        if (bodyRef.current) await waitForSpokenText(bodyRef.current)
+        if (cancelled) return
+        speakRef.current(segmentsRef.current())
+      }
+      void run()
     }, NARRATION_DELAY)
 
-    return () => window.clearTimeout(timer)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, speechOn, speechMode, speechRate, voiceURI, stepIndex, view, selectedSaying])
+
+  // Late Google Translate rewrites: if the on-screen language changes after
+  // we already started, read the new text instead of finishing in English.
+  useEffect(() => {
+    if (!open || !speechOn) return
+    if (view !== 'tour' && !selectedSaying) return
+    const root = bodyRef.current
+    if (!root) return
+
+    let spoken = extractSpokenBlocks(root).join('\n')
+    let settle = 0
+    const observer = new MutationObserver(() => {
+      window.clearTimeout(settle)
+      settle = window.setTimeout(() => {
+        const next = extractSpokenBlocks(root).join('\n')
+        if (next && next !== spoken) {
+          spoken = next
+          speakRef.current(segmentsRef.current())
+        }
+      }, 500)
+    })
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(settle)
+    }
+  }, [open, speechOn, stepIndex, view, selectedSaying])
 
   // Move focus to the new step's heading so screen readers follow along.
   useEffect(() => {
@@ -772,28 +824,36 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
           )}
         </div>
 
-        {narration.supported && (
-          <div className="shrink-0 space-y-2 border-b border-pine-600/70 px-3 py-2 dark:border-ocean-700/70 min-[960px]:space-y-3 min-[960px]:px-4 min-[960px]:py-3">
-            <VoicePicker
-              voices={narration.voices}
-              voiceURI={voiceURI}
-              onVoiceURI={narration.setVoiceURI}
-              rate={speechRate}
-              onRate={narration.setRate}
-              onRefreshVoices={refreshVoices}
-              hint="Voices are grouped by language. After Google Translate, pick a voice in that language — it reads the words on the card, not the English original."
-            />
-            {(isTour || selectedSaying) && speechOn && (
-              <button
-                type="button"
-                onClick={() => speakRef.current(segmentsForStep())}
-                className="flex min-h-10 items-center gap-1.5 rounded-xl px-3 font-sans text-xs btn-surface hover:shadow-md"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                Replay step
-              </button>
-            )}
-          </div>
+        {narration.supported && speechOn && (
+          <details
+            className="tour-speech-settings shrink-0 border-b border-pine-600/70 dark:border-ocean-700/70"
+            {...(splitLayout ? { open: true } : {})}
+          >
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 font-sans text-xs font-semibold text-pine-100 dark:text-ocean-100 min-[960px]:hidden">
+              Voice &amp; speed
+            </summary>
+            <div className="tour-speech-settings-body space-y-2 px-3 py-2 min-[960px]:space-y-3 min-[960px]:px-4 min-[960px]:py-3">
+              <VoicePicker
+                voices={narration.voices}
+                voiceURI={voiceURI}
+                onVoiceURI={narration.setVoiceURI}
+                rate={speechRate}
+                onRate={narration.setRate}
+                onRefreshVoices={refreshVoices}
+                hint="Voices are grouped by language. After Google Translate, pick a voice in that language — it reads the words on the card, not the English original."
+              />
+              {(isTour || selectedSaying) && (
+                <button
+                  type="button"
+                  onClick={() => speakRef.current(segmentsForStep())}
+                  className="flex min-h-10 items-center gap-1.5 rounded-xl px-3 font-sans text-xs btn-surface hover:shadow-md"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  Replay step
+                </button>
+              )}
+            </div>
+          </details>
         )}
 
         {/* body — a flex column so the scroll area keeps a definite height */}

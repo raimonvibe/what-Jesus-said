@@ -111,7 +111,7 @@ export default function SayingCardBody({
       )}
 
       <blockquote className="rounded-xl border-l-4 border-amber-400/80 bg-pine-900/40 px-3 py-2.5 dark:bg-ocean-950/40">
-        <p className="words-of-jesus font-serif text-sm leading-relaxed">
+        <p className="words-of-jesus font-serif text-base leading-relaxed md:text-sm">
           {saying.quote}
         </p>
         <footer className="mt-2 font-sans text-[11px] text-pine-300 dark:text-ocean-400">

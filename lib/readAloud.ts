@@ -403,9 +403,32 @@ export function pageSpeechLangChanged(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange)
   observer.observe(html, { attributes: true, attributeFilter: ['class', 'lang'] })
   window.addEventListener('hashchange', onChange)
+
+  const onCombo = (event: Event) => {
+    const target = event.target
+    if (
+      target instanceof HTMLSelectElement &&
+      target.classList.contains('goog-te-combo')
+    ) {
+      onChange()
+    }
+  }
+  document.addEventListener('change', onCombo, true)
+
+  // iOS Safari Translate often sets the googtrans cookie without a hashchange.
+  let last = detectPageSpeechLang()
+  const poll = window.setInterval(() => {
+    const next = detectPageSpeechLang()
+    if (next === last) return
+    last = next
+    onChange()
+  }, 1500)
+
   return () => {
     observer.disconnect()
     window.removeEventListener('hashchange', onChange)
+    document.removeEventListener('change', onCombo, true)
+    window.clearInterval(poll)
   }
 }
 
@@ -417,9 +440,13 @@ export function applyUtteranceVoice(
   utterance: SpeechSynthesisUtterance,
   voice: SpeechSynthesisVoice | undefined,
 ) {
-  if (!voice) return
-  utterance.voice = voice
-  utterance.lang = voice.lang.replace('_', '-')
+  const pageLang = detectPageSpeechLang()
+  if (voice) {
+    utterance.voice = voice
+    utterance.lang = voice.lang.replace('_', '-')
+    return
+  }
+  utterance.lang = pageLang
 }
 
 function voicesForLang(
@@ -454,18 +481,106 @@ export function pickDefaultVoice(
   return pool.find((v) => !v.localService) ?? pool[0]
 }
 
-/** Visible text in a panel, so Google Translate's on-screen language is spoken. */
-export function extractSpokenBlocks(root: HTMLElement): string[] {
-  const clone = root.cloneNode(true) as HTMLElement
-  clone
-    .querySelectorAll(
-      "button, svg, select, input, [data-read-aloud-ignore], [aria-hidden='true']",
-    )
-    .forEach((node) => node.remove())
+const SPOKEN_SKIP =
+  'button, svg, select, input, [data-read-aloud-ignore], [aria-hidden="true"]'
 
-  return Array.from(clone.querySelectorAll('h2, h3, p, blockquote, li'))
-    .map((el) => (el as HTMLElement).innerText.replace(/\s+/g, ' ').trim())
+/**
+ * Visible text in a panel, so Google Translate's on-screen language is spoken.
+ * Reads the live DOM (not a clone): Translate hides the English original with
+ * CSS, and a clone would still contain it, so speech would mix both languages.
+ */
+export function extractSpokenBlocks(root: HTMLElement): string[] {
+  const nodes = Array.from(
+    root.querySelectorAll<HTMLElement>('h2, h3, p, blockquote, li'),
+  ).filter((el) => !el.closest(SPOKEN_SKIP))
+
+  const unique = nodes.filter((el) =>
+    nodes.every((other) => other === el || !other.contains(el)),
+  )
+
+  return unique
+    .map((el) => el.innerText.replace(/\s+/g, ' ').trim())
     .filter((text) => text.length > 1)
+}
+
+/**
+ * Google Translate rewrites the card after it paints. Wait until those
+ * mutations settle (or the timeout) so speech does not start in English
+ * and then talk over a Dutch rewrite.
+ */
+export function waitForSpokenText(
+  root: HTMLElement,
+  timeoutMs = 1600,
+): Promise<void> {
+  if (!pageIsTranslated()) return Promise.resolve()
+
+  return new Promise((resolve) => {
+    let settle: ReturnType<typeof setTimeout> | undefined
+    let finished = false
+
+    const finish = () => {
+      if (finished) return
+      finished = true
+      observer.disconnect()
+      if (settle) window.clearTimeout(settle)
+      resolve()
+    }
+
+    const bump = () => {
+      if (settle) window.clearTimeout(settle)
+      settle = window.setTimeout(finish, 280)
+    }
+
+    const observer = new MutationObserver(bump)
+    observer.observe(root, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+    window.setTimeout(finish, timeoutMs)
+    bump()
+  })
+}
+
+const PASSAGE_CUE: Record<string, string> = {
+  en: 'The passage.',
+  nl: 'Het Bijbelgedeelte.',
+  de: 'Die Bibelstelle.',
+  fr: 'Le passage.',
+  es: 'El pasaje.',
+  it: 'Il passo.',
+  pt: 'A passagem.',
+  pl: 'Fragment.',
+  sv: 'Stycket.',
+  da: 'Afsnittet.',
+  no: 'Avsnittet.',
+  fi: 'Kohta.',
+  ru: 'Отрывок.',
+  uk: 'Уривок.',
+  el: 'Το χωρίο.',
+  ro: 'Pasajul.',
+  cs: 'Oddíl.',
+  hu: 'A szakasz.',
+  tr: 'Pasaj.',
+  id: 'Nas itu.',
+  vi: 'Đoạn văn.',
+  ja: '聖書箇所。',
+  ko: '본문.',
+  zh: '经文。',
+  ar: 'المقطع.',
+  he: 'הקטע.',
+  hi: 'अंश।',
+}
+
+/** Label spoken between the card and the verses in "Both" mode. */
+export function spokenPassageCue(panel?: HTMLElement | null): string {
+  const tab = panel?.querySelector<HTMLElement>(
+    '.tour-pane-switch button:last-of-type',
+  )
+  const fromTab = tab?.innerText.replace(/\s+/g, ' ').trim()
+  if (fromTab) return fromTab.endsWith('.') ? fromTab : `${fromTab}.`
+  const lang = languagePrefix(detectPageSpeechLang())
+  return PASSAGE_CUE[lang] ?? PASSAGE_CUE.en
 }
 
 export function formatVoiceLabel(voice: SpeechSynthesisVoice): string {

@@ -64,26 +64,41 @@ export function useTourNarration() {
   }, [rate, voiceURI])
 
   const userChoseVoice = useRef(false)
+  const pageLangRef = useRef('')
 
   const loadVoices = useCallback(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return
     const list = usableVoices(window.speechSynthesis.getVoices())
     setVoices(list)
     setVoiceURIState((current) => {
+      const pageLang = detectPageSpeechLang()
+      // Translating the page is not a voice choice — drop the saved English
+      // voice so Dutch on screen is not spoken by Samantha.
+      if (
+        pageLangRef.current &&
+        languagePrefix(pageLangRef.current) !== languagePrefix(pageLang)
+      ) {
+        userChoseVoice.current = false
+      }
+      pageLangRef.current = pageLang
+
+      const currentLang = languagePrefix(
+        list.find((v) => v.voiceURI === current)?.lang ?? '',
+      )
+      const pagePrefix = languagePrefix(pageLang)
+
       if (
         userChoseVoice.current &&
         current &&
-        list.some((v) => v.voiceURI === current)
+        list.some((v) => v.voiceURI === current) &&
+        currentLang === pagePrefix
       ) {
         return current
       }
-      const pageLang = detectPageSpeechLang()
       if (
         current &&
         list.some((v) => v.voiceURI === current) &&
-        languagePrefix(
-          list.find((v) => v.voiceURI === current)?.lang ?? '',
-        ) === languagePrefix(pageLang)
+        currentLang === pagePrefix
       ) {
         return current
       }

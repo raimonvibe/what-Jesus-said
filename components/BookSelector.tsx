@@ -143,7 +143,7 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
                   type="button"
                   onClick={() => openSayingsPanel({ sayingId: saying.id })}
                   aria-label={`Open ${saying.title}, ${saying.passage.label}`}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl border border-pine-600/60 bg-pine-900/40 px-3 py-2.5 text-left transition-colors hover:border-pine-400 hover:bg-pine-800/70 dark:border-ocean-700/60 dark:bg-ocean-900/40 dark:hover:border-ocean-500"
+                  className="flex w-full min-h-14 items-center justify-between gap-2 rounded-xl border border-pine-600/60 bg-pine-900/40 px-3.5 py-3 text-left transition-colors hover:border-pine-400 hover:bg-pine-800/70 dark:border-ocean-700/60 dark:bg-ocean-900/40 dark:hover:border-ocean-500"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <Icon
