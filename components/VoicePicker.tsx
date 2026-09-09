@@ -6,7 +6,7 @@ import { formatVoiceLabel, groupVoicesByLanguage } from '@/lib/readAloud'
 const SPEEDS = [0.75, 1, 1.25, 1.5] as const
 
 const SELECT_CLASS =
-  'w-full min-h-11 rounded-xl border border-pine-600 bg-pine-800 px-3 font-sans text-xs text-pine-50 focus:border-pine-300 focus:outline-none focus:ring-2 focus:ring-pine-500/30 dark:border-ocean-600 dark:bg-ocean-800 dark:text-ocean-50 dark:focus:border-ocean-400 dark:focus:ring-ocean-400/30'
+  'w-full min-h-11 appearance-none rounded-xl border border-pine-600 bg-pine-800 px-3 font-sans text-xs text-pine-50 focus:border-pine-300 focus:outline-none focus:ring-2 focus:ring-pine-500/30 dark:border-ocean-600 dark:bg-ocean-800 dark:text-ocean-50 dark:focus:border-ocean-400 dark:focus:ring-ocean-400/30'
 
 interface VoicePickerProps {
   voices: SpeechSynthesisVoice[]

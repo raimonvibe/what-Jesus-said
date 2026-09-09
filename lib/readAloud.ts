@@ -212,9 +212,10 @@ export function sortVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice
 /**
  * Joke and character voices the operating system ships alongside real ones.
  * Apple's "Novelty" set (Bubbles, Zarvox, Bad News…) all report as en-US, so
- * filtering by language does not remove them — they have to be named. The
- * second block is the Eloquence-era character set added in recent macOS/iOS,
- * which exists in many languages and is equally wrong for scripture.
+ * filtering by language does not remove them. On iPhone the Web Speech API
+ * also localizes the display name (Bulles, Burbujas, Bubbels…), so matching
+ * the voiceURI identifier is what actually keeps scripture from being sung
+ * by a cartoon.
  */
 const NOVELTY_VOICE_NAMES = new Set([
   'albert',
@@ -236,7 +237,7 @@ const NOVELTY_VOICE_NAMES = new Set([
   'whisper',
   'wobble',
   'zarvox',
-  // character voices
+  // Eloquence-era character set
   'eddy',
   'flo',
   'grandma',
@@ -245,28 +246,110 @@ const NOVELTY_VOICE_NAMES = new Set([
   'rocko',
   'sandy',
   'shelley',
+  // Localized Apple novelty names (iOS 17+)
+  'bulles',
+  'burbujas',
+  'bollicine',
+  'bubbels',
+  'belletjes',
+  'mauvaises nouvelles',
+  'malas noticias',
+  'brutte notizie',
+  'slecht nieuws',
+  'cloches',
+  'campanas',
+  'campane',
+  'klokken',
+  'violoncelles',
+  'violonchelos',
+  'violoncelli',
+  'bonnes nouvelles',
+  'buenas noticias',
+  'buone notizie',
+  'goed nieuws',
+  'bouffon',
+  'bufón',
+  'giullare',
+  'orgue',
+  'órgano',
+  'orgel',
+  'murmure',
+  'susurro',
+  'sussurro',
+  'fluister',
+  'gefluister',
+  'trinoides',
+  'trinoïdes',
 ])
+
+/** Tokens that appear in Apple voiceURI values such as
+ *  com.apple.speech.synthesis.voice.Bubbles or
+ *  com.apple.voice.compact.en-US.Bubbles */
+const NOVELTY_URI_TOKENS = [
+  'albert',
+  'badnews',
+  'bahh',
+  'bells',
+  'boing',
+  'bubbles',
+  'cellos',
+  'deranged',
+  'fred',
+  'goodnews',
+  'hysterical',
+  'jester',
+  'organ',
+  'pipeorgan',
+  'princess',
+  'superstar',
+  'trinoids',
+  'whisper',
+  'wobble',
+  'zarvox',
+  'eddy',
+  'flo',
+  'grandma',
+  'grandpa',
+  'reed',
+  'rocko',
+  'sandy',
+  'shelley',
+]
 
 /** "Grandma (Deutsch (Deutschland))" → "grandma"; "Microsoft David - English" → "microsoft david" */
 function baseVoiceName(name: string): string {
   return name.split('(')[0].split(' - ')[0].trim().toLowerCase()
 }
 
+function noveltyUriToken(uri: string): boolean {
+  const normalised = uri.toLowerCase().replace(/[^a-z0-9]+/g, '.')
+  return NOVELTY_URI_TOKENS.some(
+    (token) =>
+      normalised.includes(`.${token}.`) ||
+      normalised.endsWith(`.${token}`) ||
+      normalised.includes(`voice.${token}`),
+  )
+}
+
 export function isNoveltyVoice(voice: SpeechSynthesisVoice): boolean {
-  if (/eloquence/i.test(voice.name)) return true
+  if (/eloquence/i.test(voice.name) || /eloquence/i.test(voice.voiceURI)) {
+    return true
+  }
+  if (noveltyUriToken(voice.voiceURI) || noveltyUriToken(voice.name)) {
+    return true
+  }
   return NOVELTY_VOICE_NAMES.has(baseVoiceName(voice.name))
 }
 
 /**
- * Every genuine voice on the device, best first, across all languages.
- * Falls back to the raw list if a device somehow offers nothing else, so the
- * reader never ends up with an empty picker.
+ * Every genuine reading voice on the device, best first, across all languages.
+ * Novelty voices (Bubbles and the rest of Apple's joke set) stay out even if
+ * that leaves the list short — an empty picker is better than a cartoon voice.
  */
 export function usableVoices(
   voices: SpeechSynthesisVoice[],
 ): SpeechSynthesisVoice[] {
-  const genuine = voices.filter((v) => !isNoveltyVoice(v))
-  return sortVoices(genuine.length > 0 ? genuine : voices)
+  return sortVoices(voices.filter((v) => !isNoveltyVoice(v)))
 }
 
 /**

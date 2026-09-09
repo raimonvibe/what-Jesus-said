@@ -490,17 +490,18 @@
     @apply min-w-7;
   }
 
-  /* Tour / Passage / Both. Grouped on a recessed track so three bare icons read
-     as one segmented control rather than three loose buttons. */
+  /* Card / Passage / Both. Labeled on every OS so iPhone does not turn them
+     into icon-only bubbles. */
   .tour-mode-group {
-    @apply inline-flex items-center gap-0.5 rounded-xl bg-pine-800/70 p-0.5
+    @apply flex w-full items-center gap-0.5 rounded-xl bg-pine-800/70 p-0.5
       dark:bg-ocean-900/60;
   }
 
   .tour-mode-btn {
-    @apply flex min-h-9 min-w-9 items-center justify-center rounded-lg
-      text-pine-300 transition-colors hover:bg-pine-700/70 hover:text-pine-50
-      dark:text-ocean-300 dark:hover:bg-ocean-800/70 dark:hover:text-ocean-50;
+    @apply flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg
+      px-2 font-sans text-xs font-semibold text-pine-300 transition-colors
+      hover:bg-pine-700/70 hover:text-pine-50 dark:text-ocean-300
+      dark:hover:bg-ocean-800/70 dark:hover:text-ocean-50;
   }
 
   .tour-mode-btn-on {

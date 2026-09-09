@@ -87,12 +87,16 @@ const SECTION_ICONS: Record<SectionId, IconType> = {
   witness: Heart,
 }
 
-/** Icons-only per the locked design; the label is what screen readers and the
- *  tooltip announce. */
-const SPEECH_MODES: Array<{ id: SpeechMode; label: string; Icon: IconType }> = [
-  { id: 'tour', label: 'Narrate the tour only', Icon: MessageSquareQuote },
-  { id: 'passage', label: 'Narrate the passage only', Icon: BookOpen },
-  { id: 'both', label: 'Narrate the tour, then the passage', Icon: Layers },
+/** Icons-only would look like iOS bubbles; labels stay the same on every OS. */
+const SPEECH_MODES: Array<{
+  id: SpeechMode
+  label: string
+  short: string
+  Icon: IconType
+}> = [
+  { id: 'tour', label: 'Narrate the card only', short: 'Card', Icon: MessageSquareQuote },
+  { id: 'passage', label: 'Narrate the passage only', short: 'Passage', Icon: BookOpen },
+  { id: 'both', label: 'Narrate the card, then the passage', short: 'Both', Icon: Layers },
 ]
 
 const SEEN_KEY = 'jesus-said-tour-seen'
@@ -685,7 +689,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
             <div
               role="radiogroup"
               aria-label="What to narrate"
-              className="mt-2.5 flex justify-end"
+              className="mt-2.5"
             >
               <div className="tour-mode-group">
                 {SPEECH_MODES.map((m) => {
@@ -700,11 +704,8 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                       onClick={() => narration.setMode(m.id)}
                       className={`tour-mode-btn ${active ? 'tour-mode-btn-on' : ''}`}
                     >
-                      <m.Icon className="h-3.5 w-3.5" aria-hidden />
-                      {/* Real text, not aria-label: page translators rewrite
-                          text nodes and `title`, but leave aria-label in
-                          English. Still icons-only on screen. */}
-                      <span className="sr-only">{m.label}</span>
+                      <m.Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span>{m.short}</span>
                     </button>
                   )
                 })}
