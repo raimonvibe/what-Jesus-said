@@ -811,15 +811,31 @@
   align-items: center;
   justify-content: space-between;
   gap: 0;
+  /* Nine 2.5rem targets need 360px, which is more than a phone gives the
+     footer. Without this the row just ran off the edge, and html's
+     overflow-x: hidden meant the last icons could not be reached at all. */
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
 }
 
 .social-icons li {
   display: flex;
-  flex: 1 1 0;
+  /* Basis is the tap target, not 0: a zero basis makes every icon "fit" on one
+     line, so the row overflows instead of wrapping. Above ~400px they still
+     grow to share the full width, exactly as before. */
+  flex: 1 1 2.5rem;
   justify-content: center;
   padding: 0;
   margin: 0;
   min-width: 0;
+}
+
+/* Too narrow for one row of nine: break it as an even 5 + 4 rather than
+   letting a single icon orphan itself on a line of its own. */
+@media (max-width: 25rem) {
+  .social-icons li {
+    flex: 1 1 20%;
+  }
 }
 
 .social-icons .icon {
