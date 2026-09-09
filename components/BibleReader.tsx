@@ -189,6 +189,7 @@ export default function BibleReader({
       const offsetFromTop = Math.max(16, (visibleHeight - rect.height) / 2)
 
       window.scrollTo({
+        left: 0,
         top: Math.max(0, window.scrollY + rect.top - offsetFromTop),
         behavior: prefersReducedMotion ? 'auto' : 'smooth',
       })
@@ -197,7 +198,7 @@ export default function BibleReader({
   }, [highlightKey, processedContent])
 
   return (
-    <article className="card-surface p-4 md:p-6 lg:p-10">
+    <article className="card-surface w-full p-4 md:p-6 lg:p-10">
       <nav
         data-read-aloud-ignore
         className="flex items-center gap-2 text-sm text-pine-300 dark:text-ocean-400 mb-4 font-sans"

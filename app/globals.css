@@ -12,6 +12,8 @@
     @apply scroll-smooth;
     background-color: var(--wave-page-bg);
     min-height: 100vh;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   /* The tour scrolls the reader to each passage; smooth scrolling is motion
@@ -121,7 +123,9 @@
     );
     right: auto;
     top: auto;
-    max-width: min(100vw - 2rem, 22rem);
+    /* 100% of the fixed containing block, not 100vw: vw on iOS is wider than
+       the visual viewport and lets the page rubber-band sideways. */
+    max-width: min(calc(100% - 2rem), 22rem);
   }
 
   /* Passage tab on a phone: sit the Listen control above the switcher bar. */
@@ -132,7 +136,7 @@
   }
 
   .fixed-viewport-panel {
-    width: min(calc(100vw - 2rem), 22rem);
+    width: min(calc(100% - 2rem), 22rem);
     max-height: min(
       70dvh,
       calc(
@@ -255,7 +259,7 @@
     flex-direction: column;
     align-items: flex-end;
     gap: 0.75rem;
-    max-width: min(calc(100vw - 2rem), 25rem);
+    max-width: min(calc(100% - 2rem), 25rem);
     pointer-events: none;
   }
 
@@ -292,7 +296,7 @@
   }
 
   .tour-panel {
-    width: min(calc(100vw - 2rem), 25rem);
+    width: min(calc(100% - 2rem), 25rem);
     max-height: min(
       78dvh,
       calc(
@@ -308,15 +312,26 @@
      column re-centres inside what is left instead of being squeezed against it.
      Zero whenever the tour is closed or is acting as a bottom sheet. */
   .tour-safe-inset {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     padding-right: var(--reader-safe-right, 0px);
     padding-bottom: var(--reader-safe-bottom, 0px);
-    transition: padding-right 0.3s ease, padding-bottom 0.3s ease;
   }
 
   /* Fixed page controls that must stay clear of the docked panel. */
   .tour-safe-right {
     right: calc(1rem + var(--reader-safe-right, 0px));
-    transition: right 0.3s ease;
+  }
+
+  @media (min-width: 960px) {
+    .tour-safe-inset {
+      transition: padding-right 0.3s ease;
+    }
+
+    .tour-safe-right {
+      transition: right 0.3s ease;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -381,6 +396,28 @@
 
     .tour-safe-right {
       right: max(1rem, env(safe-area-inset-right, 0px));
+    }
+
+    /* iOS keeps a stale backdrop-filter layer after His words unmounts, so
+       the card floats and hangs left. Drop the blur; the fill is already opaque. */
+    .card-surface {
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      transform: none;
+    }
+
+    /* Container queries are only needed for the desktop 50/50. On a phone they
+       shrink-wrap the column and leave it left-aligned after a pane switch. */
+    .reader-container {
+      container-type: normal;
+      width: 100%;
+      max-width: none;
+      margin-inline: 0;
+      overflow-x: hidden;
+      overflow-x: clip;
     }
   }
 
@@ -612,13 +649,20 @@
      it docked, so the grids inside size against this box rather than the
      viewport — otherwise a 1440px window keeps five book columns crammed into
      a 720px pane. Column counts match the old viewport breakpoints.
-     width: 100% is required: `container-type: inline-size` can shrink-to-fit
-     on iOS Safari, which left-aligns the card instead of filling the row. */
+     container-type is desktop-only: on iOS it shrink-wraps after a pane switch
+     and leaves the card hanging left. Phone/tablet grids use @media below. */
   .reader-container {
-    container-type: inline-size;
     width: 100%;
     max-width: 80rem;
     margin-inline: auto;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+
+  @media (min-width: 960px) {
+    .reader-container {
+      container-type: inline-size;
+    }
   }
 
   .grid-books,
@@ -633,6 +677,32 @@
 
   .grid-chapters {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Phone/tablet: no container-type, so these must be viewport queries. */
+  @media (min-width: 640px) and (max-width: 959px) {
+    .grid-books {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-chapters {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 959px) {
+    .grid-books,
+    .grid-chapters {
+      gap: 0.75rem;
+    }
+
+    .grid-books {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .grid-chapters {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
   }
 
   @container (min-width: 640px) {

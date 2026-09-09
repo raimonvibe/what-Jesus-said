@@ -24,7 +24,7 @@ export default function ChapterSelector({
   onBack,
 }: ChapterSelectorProps) {
   return (
-    <section data-read-aloud-block className="card-surface p-4 md:p-6 lg:p-8">
+    <section data-read-aloud-block className="card-surface w-full p-4 md:p-6 lg:p-8">
       <button
         data-read-aloud-ignore
         onClick={onBack}

@@ -67,6 +67,7 @@ import type { Saying } from '@/lib/sayings/types'
 import VoicePicker from '@/components/VoicePicker'
 import { useTourNarration, type SpeechMode } from '@/hooks/useTourNarration'
 import { extractSpokenBlocks } from '@/lib/readAloud'
+import { snapViewportX } from '@/hooks/useFixedViewportInsets'
 
 /** Where the tour wants the reader to be. */
 export interface TourTarget {
@@ -324,6 +325,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
 
     if (!open) {
       clear()
+      snapViewportX()
       return clear
     }
 
@@ -343,15 +345,19 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
       }
 
       root.style.setProperty('--reader-safe-right', '0px')
+      // Page padding stays still: --vv-offset-bottom belongs on the fixed bar,
+      // not here. Animating the page with the iOS toolbar is what made the
+      // card wobble after His words ↔ the passage.
       root.style.setProperty(
         '--reader-safe-bottom',
         minimized
-          ? 'calc(4.25rem + env(safe-area-inset-bottom, 0px) + var(--vv-offset-bottom, 0px))'
+          ? 'calc(4.25rem + env(safe-area-inset-bottom, 0px))'
           : '0px',
       )
     }
 
     update()
+    snapViewportX()
     const splitQuery = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`)
     splitQuery.addEventListener('change', update)
     window.addEventListener('resize', update)

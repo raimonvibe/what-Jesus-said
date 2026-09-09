@@ -17,6 +17,23 @@ import { useEffect } from 'react'
  */
 const MEANINGFUL_OFFSET_PX = 60
 
+/**
+ * iOS Safari can leave the page panned sideways after a full-screen overlay
+ * (His words ↔ the passage) or a large reflow (opening a chapter). At 1× zoom
+ * that offset is never a user pan — snap it back so the card cannot hang left.
+ */
+export function snapViewportX() {
+  if (typeof window === 'undefined') return
+  const snap = () => {
+    if (window.scrollX !== 0) window.scrollTo(0, window.scrollY)
+  }
+  snap()
+  window.requestAnimationFrame(() => {
+    snap()
+    window.requestAnimationFrame(snap)
+  })
+}
+
 export function useFixedViewportInsets() {
   useEffect(() => {
     const root = document.documentElement

@@ -84,7 +84,7 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
 
       <section
         data-read-aloud-block
-        className={`card-surface p-4 md:p-6 lg:p-8 ${
+        className={`card-surface w-full p-4 md:p-6 lg:p-8 ${
           homePane === 'bible' ? '' : 'max-[959px]:hidden'
         }`}
       >
@@ -109,7 +109,7 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
 
       <section
         data-read-aloud-block
-        className={`card-surface p-4 md:p-6 lg:p-8 ${
+        className={`card-surface w-full p-4 md:p-6 lg:p-8 ${
           homePane === 'sayings' ? '' : 'max-[959px]:hidden'
         }`}
       >

@@ -13,7 +13,7 @@
   "keywords": [],
   "author": "raimonvibe",
   "license": "MIT",
-  "description": "The New Testament, and everything Jesus said, from the World English Bible.",
+  "description": "The New Testament from the World English Bible, with the passage open beside every saying. 540 sayings of Jesus, His words marked in the reader.",
   "dependencies": {
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",

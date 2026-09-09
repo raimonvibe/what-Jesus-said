@@ -10,6 +10,7 @@ import AdvancedSearch from '@/components/AdvancedSearch'
 import type { SearchResult } from '@/lib/bibleSearch'
 import SiteFooter from '@/components/SiteFooter'
 import GuidedTour, { type TourTarget } from '@/components/GuidedTour'
+import { snapViewportX } from '@/hooks/useFixedViewportInsets'
 
 interface Chapter {
   id: string
@@ -103,6 +104,10 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('read-aloud-stop'))
   }, [readAloudStopKey])
+
+  useEffect(() => {
+    snapViewportX()
+  }, [view])
 
   // Navigation runs off the index so it works before the text has loaded;
   // reading needs the full book.
@@ -214,7 +219,7 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
   })()
 
   return (
-    <div className="min-h-screen py-6 md:py-10 px-4 md:px-6 lg:px-8 max-[959px]:px-[max(1rem,env(safe-area-inset-left,0px))] max-[959px]:pr-[max(1rem,env(safe-area-inset-right,0px))]">
+    <div className="min-h-screen w-full max-w-full box-border py-6 md:py-10 px-4 md:px-6 lg:px-8 max-[959px]:px-[max(1rem,env(safe-area-inset-left,0px))] max-[959px]:pr-[max(1rem,env(safe-area-inset-right,0px))]">
       {/* Floats over the reading column, so it carries its own backdrop rather
           than letting verse text run between the two controls. */}
       <div
@@ -251,7 +256,7 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
         />
       )}
 
-      <div className="reader-container max-w-7xl mx-auto">
+      <div className="reader-container">
         {/* Header */}
         <header data-read-aloud-ignore className="text-center mb-8 md:mb-12">
           <div className="inline-flex items-center gap-3 mb-4">
@@ -308,7 +313,7 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
                 highlightVerses={tourVerses}
               />
             ) : loadError ? (
-              <div className="card-surface p-10 text-center" role="alert">
+              <div className="card-surface w-full p-10 text-center" role="alert">
                 <TriangleAlert className="w-12 h-12 text-accent mx-auto mb-4" />
                 <p className="text-pine-50 dark:text-ocean-50 font-sans font-medium mb-1">
                   The Bible text didn&rsquo;t load
@@ -327,7 +332,7 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
                 </button>
               </div>
             ) : (
-              <div className="card-surface p-10 text-center" aria-live="polite">
+              <div className="card-surface w-full p-10 text-center" aria-live="polite">
                 <BookMarked className="w-12 h-12 text-pine-300 dark:text-ocean-400 mx-auto mb-4 animate-pulse" />
                 <p className="text-pine-200 dark:text-ocean-200 font-sans">
                   Loading {selectedNavBook?.name ?? 'the passage'}…
