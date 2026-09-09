@@ -515,7 +515,7 @@ export function waitForSpokenText(
   if (!pageIsTranslated()) return Promise.resolve()
 
   return new Promise((resolve) => {
-    let settle: ReturnType<typeof setTimeout> | undefined
+    let settle: number | undefined
     let finished = false
 
     const finish = () => {
