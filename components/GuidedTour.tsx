@@ -328,10 +328,10 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     }
 
     const update = () => {
-      const phone = window.innerWidth < SPLIT_MIN_WIDTH
-      root.classList.toggle('tour-passage-phone', phone && minimized)
+      const split = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`).matches
+      root.classList.toggle('tour-passage-phone', !split && minimized)
 
-      if (!phone) {
+      if (split) {
         if (minimized) {
           root.style.setProperty('--reader-safe-bottom', '0px')
           root.style.setProperty('--reader-safe-right', '0px')
@@ -352,9 +352,12 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
     }
 
     update()
+    const splitQuery = window.matchMedia(`(min-width: ${SPLIT_MIN_WIDTH}px)`)
+    splitQuery.addEventListener('change', update)
     window.addEventListener('resize', update)
     window.addEventListener('orientationchange', update)
     return () => {
+      splitQuery.removeEventListener('change', update)
       window.removeEventListener('resize', update)
       window.removeEventListener('orientationchange', update)
       clear()

@@ -372,6 +372,16 @@
           var(--vv-offset-bottom, 0px)
       );
     }
+
+    /* Never keep the desktop 50/50 right pad on a phone, even if JS still
+       thinks the window is wide (Safari layout viewport / desktop-site). */
+    .tour-safe-inset {
+      padding-right: 0;
+    }
+
+    .tour-safe-right {
+      right: max(1rem, env(safe-area-inset-right, 0px));
+    }
   }
 
   /* Landscape phones: drop the keyboard hint, which is the least useful line
@@ -601,9 +611,14 @@
   /* The reading column is full-width with the tour closed and half-width with
      it docked, so the grids inside size against this box rather than the
      viewport — otherwise a 1440px window keeps five book columns crammed into
-     a 720px pane. Column counts match the old viewport breakpoints. */
+     a 720px pane. Column counts match the old viewport breakpoints.
+     width: 100% is required: `container-type: inline-size` can shrink-to-fit
+     on iOS Safari, which left-aligns the card instead of filling the row. */
   .reader-container {
     container-type: inline-size;
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
   }
 
   .grid-books,

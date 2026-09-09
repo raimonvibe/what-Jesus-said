@@ -214,7 +214,7 @@ export default function BibleApp({ bookIndex }: { bookIndex: BibleIndex }) {
   })()
 
   return (
-    <div className="min-h-screen py-6 md:py-10 px-4 md:px-6 lg:px-8">
+    <div className="min-h-screen py-6 md:py-10 px-4 md:px-6 lg:px-8 max-[959px]:px-[max(1rem,env(safe-area-inset-left,0px))] max-[959px]:pr-[max(1rem,env(safe-area-inset-right,0px))]">
       {/* Floats over the reading column, so it carries its own backdrop rather
           than letting verse text run between the two controls. */}
       <div
