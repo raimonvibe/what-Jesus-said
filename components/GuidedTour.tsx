@@ -101,13 +101,11 @@ const LAST_STEP = SAYING_STEPS.length - 1
 
 /**
  * At or above this the layout is a 50/50 split and the panel docks full-height
- * to the right; below it the panel is a bottom sheet. Mirrored by the
- * `960px` media queries in app/globals.css — move both together.
+ * to the right; below it the two surfaces take turns — His words full-screen,
+ * or the passage with a bar to switch back. Mirrored by the `960px` media
+ * queries in app/globals.css — move both together.
  */
 const SPLIT_MIN_WIDTH = 960
-
-/** Below this there is no useful strip of text above a bottom sheet. */
-const MIN_VISIBLE_STRIP = 140
 
 /** Give the reader time to open the chapter before reading the passage from it. */
 const NARRATION_DELAY = 450
@@ -309,44 +307,44 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
    *
    *  - split → the page pads its right edge by the panel's width, leaving the
    *    Bible the left half.
-   *  - sheet → the panel is a bottom sheet and the reader scrolls the
-   *    highlighted verses into the space above it.
+   *  - phone → His words is full-screen, so the Bible waits underneath with
+   *    no inset; switching to the passage reserves the switcher bar.
    */
   useEffect(() => {
     const root = document.documentElement
     const clear = () => {
       root.style.setProperty('--reader-safe-bottom', '0px')
       root.style.setProperty('--reader-safe-right', '0px')
+      root.classList.remove('tour-passage-phone')
     }
 
-    if (!open || minimized) {
+    if (!open) {
       clear()
       return clear
     }
 
     const update = () => {
-      const el = panelRef.current
-      if (!el) return clear()
-      const rect = el.getBoundingClientRect()
+      const phone = window.innerWidth < SPLIT_MIN_WIDTH
+      root.classList.toggle('tour-passage-phone', phone && minimized)
 
-      if (window.innerWidth >= SPLIT_MIN_WIDTH) {
-        // The dock's width is 50% in CSS; hand that back verbatim rather than
-        // measuring, so a classic scrollbar can't skew the two halves apart.
+      if (!phone) {
+        if (minimized) {
+          root.style.setProperty('--reader-safe-bottom', '0px')
+          root.style.setProperty('--reader-safe-right', '0px')
+          return
+        }
         root.style.setProperty('--reader-safe-bottom', '0px')
         root.style.setProperty('--reader-safe-right', '50%')
-      } else {
-        // On a very short window the sheet fills the screen and there is no
-        // strip left to scroll into; leave the reservation at zero so the
-        // passage still centres normally (Minimize is the way to read there).
-        const roomAbove = rect.top
-        root.style.setProperty(
-          '--reader-safe-bottom',
-          roomAbove >= MIN_VISIBLE_STRIP
-            ? `${Math.round(window.innerHeight - rect.top)}px`
-            : '0px',
-        )
-        root.style.setProperty('--reader-safe-right', '0px')
+        return
       }
+
+      root.style.setProperty('--reader-safe-right', '0px')
+      root.style.setProperty(
+        '--reader-safe-bottom',
+        minimized
+          ? 'calc(4.25rem + env(safe-area-inset-bottom, 0px) + var(--vv-offset-bottom, 0px))'
+          : '0px',
+      )
     }
 
     update()
@@ -357,7 +355,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
       window.removeEventListener('orientationchange', update)
       clear()
     }
-  }, [open, minimized, stepIndex])
+  }, [open, minimized])
 
   /**
    * What the current step sounds like under the chosen mode. Shared by the
@@ -527,26 +525,43 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
 
   if (minimized) {
     return createPortal(
-      <div className="tour-anchor" style={{ zIndex: 55 }}>
+      <div className="tour-anchor tour-mobile-switch" style={{ zIndex: 55 }}>
         <div
           data-read-aloud-ignore
-          className="tour-panel-shell pointer-events-auto flex items-center gap-2 rounded-full py-2 pl-4 pr-2 shadow-lg"
+          className="tour-panel-shell pointer-events-auto flex w-full items-center gap-2 py-2 pl-2 pr-2 shadow-lg min-[960px]:w-auto min-[960px]:rounded-full min-[960px]:py-2 min-[960px]:pl-4"
         >
+          <div
+            role="tablist"
+            aria-label="Show His words or the passage"
+            className="tour-pane-switch min-[960px]:hidden"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              onClick={() => setMinimized(false)}
+            >
+              His words
+            </button>
+            <button type="button" role="tab" aria-selected={true}>
+              The passage
+            </button>
+          </div>
           {speechOn && (
             <Volume2
-              className={`h-3.5 w-3.5 shrink-0 text-pine-300 dark:text-ocean-400 ${
+              className={`hidden h-3.5 w-3.5 shrink-0 text-pine-300 min-[960px]:block dark:text-ocean-400 ${
                 narration.speaking ? 'tour-speaking' : ''
               }`}
               aria-label="Narration is on"
             />
           )}
-          <span className="font-sans text-xs font-medium text-pine-100 dark:text-ocean-100">
+          <span className="hidden font-sans text-xs font-medium text-pine-100 min-[960px]:inline dark:text-ocean-100">
             {stepLabel}
           </span>
           <button
             type="button"
             onClick={() => setMinimized(false)}
-            className="tour-icon-btn"
+            className="tour-icon-btn hidden min-[960px]:flex"
             aria-label="Expand the guided tour"
           >
             <Maximize2 className="h-4 w-4" aria-hidden />
@@ -630,7 +645,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
               <button
                   type="button"
                   onClick={() => setMinimized(true)}
-                  className="tour-icon-btn"
+                  className="tour-icon-btn hidden min-[960px]:flex"
                   aria-label="Minimize the tour and read the passage"
                 >
                   <Minimize2 className="h-4 w-4" aria-hidden />
@@ -644,6 +659,24 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Show His words or the passage"
+            className="tour-pane-switch mt-2.5 min-[960px]:hidden"
+          >
+            <button type="button" role="tab" aria-selected={true}>
+              His words
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={false}
+              onClick={() => setMinimized(true)}
+            >
+              The passage
+            </button>
           </div>
 
           {/* What to narrate. Sits on its own row rather than in the voice
@@ -730,7 +763,7 @@ export default function GuidedTour({ onNavigate }: GuidedTourProps) {
         </div>
 
         {narration.supported && (
-          <div className="shrink-0 space-y-3 border-b border-pine-600/70 px-4 py-3 dark:border-ocean-700/70">
+          <div className="shrink-0 space-y-2 border-b border-pine-600/70 px-3 py-2 dark:border-ocean-700/70 min-[960px]:space-y-3 min-[960px]:px-4 min-[960px]:py-3">
             <VoicePicker
               voices={narration.voices}
               voiceURI={voiceURI}

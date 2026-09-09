@@ -28,7 +28,7 @@ export default function VoicePicker({
   hint,
 }: VoicePickerProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2 min-[960px]:space-y-3">
       <label className="block">
         <span className="mb-1 block font-sans text-xs font-medium text-pine-200 dark:text-ocean-300">
           Voice
@@ -68,7 +68,7 @@ export default function VoicePicker({
               type="button"
               onClick={() => onRate(speed)}
               aria-pressed={rate === speed}
-              className={`min-h-9 min-w-[3rem] rounded-lg px-2 font-sans text-xs font-medium transition-colors ${
+              className={`min-h-8 min-w-[2.75rem] rounded-lg px-2 font-sans text-xs font-medium min-[960px]:min-h-9 min-[960px]:min-w-[3rem] transition-colors ${
                 rate === speed
                   ? 'bg-pine-100 text-pine-900 dark:bg-ocean-200 dark:text-ocean-950'
                   : 'bg-pine-800 text-pine-100 hover:bg-pine-700 dark:bg-ocean-800 dark:text-ocean-100 dark:hover:bg-ocean-700'
@@ -80,7 +80,7 @@ export default function VoicePicker({
         </div>
       </div>
       {hint && (
-        <p className="font-sans text-[10px] leading-relaxed text-pine-300 dark:text-ocean-300">
+        <p className="hidden font-sans text-[10px] leading-relaxed text-pine-300 min-[960px]:block dark:text-ocean-300">
           {hint}
         </p>
       )}

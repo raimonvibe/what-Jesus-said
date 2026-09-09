@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { Book, MessageSquareQuote } from 'lucide-react'
 import { SAYING_COUNT, startHere } from '@/lib/sayings/catalog'
 import { openSayingsPanel } from '@/lib/sayings/paths'
 import { iconFor } from '@/components/SayingCardBody'
+
+type HomePane = 'bible' | 'sayings'
 
 interface BookSelectorProps {
   books: Array<{ id: string; name: string; abbreviation: string; chapters: any[] }>
@@ -12,6 +15,7 @@ interface BookSelectorProps {
 }
 
 export default function BookSelector({ books, selectedBookId, onSelectBook }: BookSelectorProps) {
+  const [homePane, setHomePane] = useState<HomePane>('bible')
   const featured = startHere(8)
   const chapterCount = books.reduce((sum, book) => sum + book.chapters.length, 0)
 
@@ -53,7 +57,37 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
 
   return (
     <div className="space-y-8">
-      <section data-read-aloud-block className="card-surface p-4 md:p-6 lg:p-8">
+      <div
+        role="tablist"
+        aria-label="Choose New Testament or What Jesus Said"
+        className="home-pane-switch min-[960px]:hidden"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={homePane === 'bible'}
+          onClick={() => setHomePane('bible')}
+        >
+          <Book className="h-4 w-4" aria-hidden />
+          New Testament
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={homePane === 'sayings'}
+          onClick={() => setHomePane('sayings')}
+        >
+          <MessageSquareQuote className="h-4 w-4" aria-hidden />
+          What Jesus Said
+        </button>
+      </div>
+
+      <section
+        data-read-aloud-block
+        className={`card-surface p-4 md:p-6 lg:p-8 ${
+          homePane === 'bible' ? '' : 'max-[959px]:hidden'
+        }`}
+      >
         <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-pine-600 dark:border-ocean-700">
           <div className="flex items-center gap-3">
             <Book className="w-7 h-7 md:w-8 md:h-8 text-blue-700 dark:text-blue-400" aria-hidden="true" />
@@ -73,7 +107,12 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
         </nav>
       </section>
 
-      <section data-read-aloud-block className="card-surface p-4 md:p-6 lg:p-8">
+      <section
+        data-read-aloud-block
+        className={`card-surface p-4 md:p-6 lg:p-8 ${
+          homePane === 'sayings' ? '' : 'max-[959px]:hidden'
+        }`}
+      >
         <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-pine-600 dark:border-ocean-700 gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <MessageSquareQuote className="w-7 h-7 md:w-8 md:h-8 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
@@ -91,7 +130,8 @@ export default function BookSelector({ books, selectedBookId, onSelectBook }: Bo
         <p className="font-serif text-sm leading-relaxed text-pine-100 dark:text-ocean-200 mb-4 max-w-3xl">
           Every speech the World English Bible marks as the words of Jesus,
           from the Gospels through Acts, a few quotations in the letters, and
-          Revelation. Open a saying and the chapter opens beside it.
+          Revelation. Open a saying and the chapter opens beside it on a wide
+          screen, or from the Passage tab on a phone.
         </p>
 
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 list-none p-0 m-0 mb-4">
